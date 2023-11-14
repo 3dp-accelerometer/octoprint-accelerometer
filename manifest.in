@@ -1,0 +1,4 @@
+include readme.md
+recursive-include octoprint_accelerometer/templates *
+recursive-include octoprint_accelerometer/translations *
+recursive-include octoprint_accelerometer/static *
