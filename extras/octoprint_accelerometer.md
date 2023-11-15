@@ -3,30 +3,24 @@ layout: plugin
 
 id: octoprint_accelerometer
 title: Octoprint Accelerometer
-description: OctoPrint plugin for the 3DP Accelerometer (github.com/3dp-accelerometer)
+description: OctoPrint plugin for the 3DP Accelerometer
 authors:
 - Raoul Rubien
 license: Apache-2.0
+date: 2023-11-23
 
-# TODO
-date: today's date in format YYYY-MM-DD, e.g. 2015-04-21
-
-homepage: https://github.com/3dp-accelerometer/octoprint-accelerometer
+homepage: https://github.com/3dp-accelerometer
 source: https://github.com/3dp-accelerometer/octoprint-accelerometer
 archive: https://github.com/rubienr/https://github.com/3dp-accelerometer/octoprint-accelerometer/archive/master.zip
 
-# TODO
 # Set this to true if your plugin uses the dependency_links setup parameter to include
 # library versions not yet published on PyPi. SHOULD ONLY BE USED IF THERE IS NO OTHER OPTION!
 #follow_dependency_links: false
 
-# TODO
 tags:
-- a list
-- of tags
-- that apply
-- to your plugin
-- (take a look at the existing plugins for what makes sense here)
+- accelerometer
+- sensor
+- input_shaping
 
 # TODO
 # When registering a plugin on plugins.octoprint.org, all screenshots should be uploaded not linked from external sites.
@@ -60,7 +54,7 @@ compatibility:
   # OctoPrint versions being supported.
 
   octoprint:
-  - 1.4.0
+  - 1.9.0
 
   # List of compatible operating systems
   #
@@ -84,14 +78,6 @@ compatibility:
   - windows
   - macos
   - freebsd
-
-  # Compatible Python version
-  #
-  # It is recommended to only support Python 3 for new plugins, in which case this should be ">=3,<4"
-  #
-  # Plugins that wish to support both Python 2 and 3 should set it to ">=2.7,<4".
-  #
-  # Plugins that only support Python 2 will not be accepted into the plugin repository.
 
   python: ">=3,<4"
 
