@@ -35,7 +35,7 @@ plugin_license = "Apache-2.0"
 
 # Any additional requirements besides OctoPrint should be listed here
 plugin_requires = [
-    "py3dpaxxel @ git+https://github.com/3dp-accelerometer/py3dpaxxel.git@v0.1.1",
+    "py3dpaxxel @ git+https://github.com/3dp-accelerometer/py3dpaxxel.git@v0.1.2",
 ]
 
 # --------------------------------------------------------------------------------------------------------------------
