@@ -1,0 +1,20 @@
+<h3>TODO</h3>
+
+<form class="form-horizontal" onsubmit="return false;">
+    <div class="control-group">
+
+        <h4>Trajectory Generator</h4>
+        <span class="help-inline" data-bind="text: ui_estimated_recording_duration_str"></span>
+
+        <div class="controls">
+            <label class="number">
+                <input type="checkbox" data-bind="checked: settings.settings.plugins.octoprint_accelerometer.do_sample_x">
+                <span class="help-inline">{{ _('X')}}</span>
+                <input type="checkbox" data-bind="checked: settings.settings.plugins.octoprint_accelerometer.do_sample_y">
+                <span class="help-inline">{{ _('Y')}}</span>
+                <input type="checkbox" data-bind="checked: settings.settings.plugins.octoprint_accelerometer.do_sample_z">
+                <span class="help-inline">{{ _('Z axis')}}</span>
+            </label>
+        </div>
+    </div>
+</form>

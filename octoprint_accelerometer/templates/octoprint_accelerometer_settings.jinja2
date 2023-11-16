@@ -6,10 +6,10 @@
         <h4>Trajectory Generator</h4>
 
         <span class="help-block">
-                {{ _('The generator will compute back and forth movement permutations depending on:
-                      axis (<code>X</code>,<code>Y</code>,<code>Z</code>), <code>times</code> to move back and forth,
-                      <code>reruns</code> and input shaping limits (<code>frequency</code> and
-                      <code>zeta</code> parameter; see ')}}
+                {{ _('The generator will compute back and forth movement permutations for each axis depending on:
+                      selected <code>axis</code>, <code>times</code> to move back and forth,
+                      <code>reruns</code> and input shaping limits such as <code>frequency</code> and
+                      <code>zeta</code> parameter (see ')}}
                 <a href="https://marlinfw.org/docs/gcode/M593.html">M593</a>).
         </span>
 
@@ -30,20 +30,20 @@
             <label class="number">
                 <input type="number" class="input-mini text-right" min="5" max="150" data-bind="value: settings.plugins.octoprint_accelerometer.distance_mm">
                 <span class="help-inline">{{ _('mm')}}</span>
+                <span class="help-block">
+                    {{ _('Distance to move back and forth in one repetition')}}
+                </span>
             </label>
-            <span class="help-inline">
-                {{ _('Distance to move back and forth in one repetition')}}
-            </span>
         </div>
 
         <div class="controls">
             <label class="number">
                 <input type="number" class="input-mini text-right" min="1" max="10" data-bind="value: settings.plugins.octoprint_accelerometer.repetitions_count">
                 <span class="help-inline">{{ _('times')}}</span>
-            </label>
-            <span class="help-inline">
+                <span class="help-block">
                     {{ _('How often to repeat back and forth before one step is finished.')}}
-            </span>
+                </span>
+            </label>
         </div>
 
         <h5>Input Shaping</h5>
@@ -92,12 +92,56 @@
             <label class="number">
                 <input type="number" class="input-mini text-right" min="1" max="10" data-bind="value: settings.plugins.octoprint_accelerometer.runs_count">
                 <span class="help-inline">{{ _('rerun')}}</span>
+                <span class="help-block">
+                    {{ _('How many <code>series</code> to run: repeats permutations <code>series</code>-times.')}}
+                </span>
             </label>
         </div>
-        <div class="controls">
-            <span class="help-block">
-                {{ _('How many <code>series</code> to run: repeats permutations <code>series</code>-times.')}}
-            </span>
+
+        <div class="control-group">
+
+            <h4>Recording</h4>
+
+            <div class="controls">
+                <label class="number">
+                    <input type="number" class="input-mini text-right" min="0.1" max="10.0" step="0.1" data-bind="value: settings.plugins.octoprint_accelerometer.recording_timespan_s">
+                    <span class="help-inline">{{ _('s')}}</span>
+                    <span class="help-block">
+                    {{ _('Records samples for the given timespan.
+                          Choose the timespan according to your printer speed and acceleration settings,
+                          so that a short break in between steps can be observed.
+                          For the moment sampling is not synchronized with the very last step of each movement.')}}
+                </span>
+                </label>
+            </div>
+
+            <div class="controls">
+                <label class="number">
+                    <input type="number" class="input-mini text-right" min="0.1" max="1.0" step="0.1" data-bind="value: settings.plugins.octoprint_accelerometer.steps_separation_s">
+                    <span class="help-inline">{{ _('s')}}</span>
+                    <span class="help-block">
+                    {{ _('Pause after step is finished until next step is started')}}
+                </span>
+                </label>
+            </div>
+
+            <div class="controls">
+                <select data-bind="value: settings.plugins.octoprint_accelerometer.sensor_output_data_rate_hz">
+                    <option value="3200">{{ _('3200') }}</option>
+                    <option value="1600">{{ _('1600') }}</option>
+                    <option value="800">{{ _('800') }}</option>
+                    <option value="400">{{ _('400') }}</option>
+                    <option value="200">{{ _('200') }}</option>
+                    <option value="100">{{ _('100') }}</option>
+                </select>
+                <span class="help-inline">{{ _('Hz')}}</span>
+                <span class="help-block">
+                    {{ _('How many <code>samples</code> per second the sensor shall capture.
+                    Decrease if FiFo overflow is reported.
+                    Overflow error is most likely no problem with the controller but rather host IO load.')}}
+                </span>
+            </div>
+
         </div>
 
         <h5>Advanced</h5>
@@ -116,32 +160,6 @@
                 <span class="help-inline">{{ _('Return to start after each step')}}</span>
             </label>
         </div>
-    </div>
-
-    <div class="control-group">
-
-        <h4>Sensor Settings</h4>
-
-        <div class="controls">
-            <select data-bind="value: settings.plugins.octoprint_accelerometer.sensor_ourput_data_rate_hz">
-                <option value="3200">{{ _('3200') }}</option>
-                <option value="1600">{{ _('1600') }}</option>
-                <option value="800">{{ _('800') }}</option>
-                <option value="400">{{ _('400') }}</option>
-                <option value="200">{{ _('200') }}</option>
-                <option value="100">{{ _('100') }}</option>
-            </select>
-            <span class="help-inline">{{ _('Hz')}}</span>
-        </div>
-
-        <div class="controls">
-            <span class="help-block">
-                {{ _('How many <code>samples</code> per second the sensor shall perform.
-                Decrease if FiFo overflow is reported.
-                Overflow error is most likely no problem with the controller but rather host IO load.')}}
-            </span>
-        </div>
-
     </div>
 
     <div class="control-group">
