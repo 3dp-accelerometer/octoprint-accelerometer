@@ -28,9 +28,7 @@ class OctoprintAccelerometerPlugin(octoprint.plugin.StartupPlugin,
         self.distance_x_mm: int = 0
         self.distance_y_mm: int = 0
         self.distance_z_mm: int = 0
-        self.repetitions_x_count: int = 0
-        self.repetitions_y_count: int = 0
-        self.repetitions_z_count: int = 0
+        self.repetitions_count: int = 0
         self.speed_x_mm_s: int = 0
         self.speed_y_mm_s: int = 0
         self.speed_z_mm_s: int = 0
@@ -56,7 +54,9 @@ class OctoprintAccelerometerPlugin(octoprint.plugin.StartupPlugin,
         self.do_sample_y: bool = False
         self.do_sample_z: bool = False
         self.recording_timespan_s: float = 0
+        self.repetitions_separation_s: float = 0
         self.steps_separation_s: float = 0
+        self.do_dry_run: bool = False
 
         # following parameters are computed from above parameters
 
@@ -73,7 +73,7 @@ class OctoprintAccelerometerPlugin(octoprint.plugin.StartupPlugin,
             start_data_processing=[])
 
     def on_api_command(self, command, data):
-        self._logger.info(f"xxx on api command: {command} data: {data}")
+        self._logger.info(f"xxx on API POST command: {command} data: {data}")
         if command == "set_values":
             self._update_members_from_api(data)
         elif command == "start_recording":
@@ -82,8 +82,8 @@ class OctoprintAccelerometerPlugin(octoprint.plugin.StartupPlugin,
             self._start_data_processing()
 
     def on_api_get(self, request: OctoPrintFlaskRequest):
-        self._logger.info(f"xxx on api get: {request.args}")
-        known_args: Dict[str, Dict[str, Callable[[], str]]] = {
+        self._logger.info(f"xxx on API GET: {request.args}")
+        known_args: Dict[str, Dict[str, Callable[[], Any]]] = {
             "q": {
                 "estimate": self._estimate_duration,
                 "parameters": self._estimate_get_parameter_dict,
@@ -112,21 +112,19 @@ class OctoprintAccelerometerPlugin(octoprint.plugin.StartupPlugin,
         anchor_point = Point3D(0, 0, 50) if origin_center else Point3D(int(width // 2), int(depth // 2), int(height // 2))
 
         return dict(
-            anchor_point_coord_x_mm=anchor_point.x,
-            anchor_point_coord_y_mm=anchor_point.y,
-            anchor_point_coord_z_mm=anchor_point.z,
             distance_x_mm=10,
             distance_y_mm=10,
             distance_z_mm=10,
-            repetitions_x_count=2,
-            repetitions_y_count=2,
-            repetitions_z_count=2,
+            repetitions_count=2,
             speed_x_mm_s=100,
             speed_y_mm_s=100,
             speed_z_mm_s=100,
             acceleration_x_mm_ss=1000,
             acceleration_y_mm_ss=1000,
             acceleration_z_mm_ss=1000,
+            anchor_point_coord_x_mm=anchor_point.x,
+            anchor_point_coord_y_mm=anchor_point.y,
+            anchor_point_coord_z_mm=anchor_point.z,
             runs_count=1,
             go_start=True,
             return_start=True,
@@ -143,7 +141,9 @@ class OctoprintAccelerometerPlugin(octoprint.plugin.StartupPlugin,
             do_sample_y=True,
             do_sample_z=False,
             recording_timespan_s=1.5,
+            repetitions_separation_s=0.1,
             steps_separation_s=0.1,
+            do_dry_run=False,
         )
 
     def on_settings_save(self, data):
@@ -186,7 +186,7 @@ class OctoprintAccelerometerPlugin(octoprint.plugin.StartupPlugin,
     @staticmethod
     def _get_ui_exposed_parameters() -> List[str]:
         return ["distance_x_mm", "distance_y_mm", "distance_z_mm",
-                "repetitions_x_count", "repetitions_y_count", "repetitions_z_count",
+                "repetitions_count",
                 "speed_x_mm_s", "speed_y_mm_s", "speed_z_mm_s",
                 "acceleration_x_mm_ss", "acceleration_y_mm_ss", "acceleration_z_mm_ss",
                 "anchor_point_coord_x_mm", "anchor_point_coord_y_mm", "anchor_point_coord_z_mm",
@@ -197,16 +197,15 @@ class OctoprintAccelerometerPlugin(octoprint.plugin.StartupPlugin,
                 "sensor_output_data_rate_hz",
                 "data_remove_before_run",
                 "do_sample_x", "do_sample_y", "do_sample_z",
-                "recording_timespan_s", "steps_separation_s"]
+                "recording_timespan_s", "repetitions_separation_s", "steps_separation_s"]
 
     def _update_member_from_str_value(self, parameter: str, value: str):
-        self._logger.info(f"xxx update {parameter}={value} from api ...")
         if parameter in self._get_ui_exposed_parameters():
             old_value = getattr(self, parameter)
             value_type = type(old_value)
             setattr(self, parameter, value_type(value))
             new_value = getattr(self, parameter)
-            self._logger.info(f"xxx update {parameter}: {old_value} -> {new_value} from api ... done")
+            self._logger.info(f"xxx update {parameter}: {old_value} -> {new_value} from api")
 
     def _update_members_from_api(self, data: Dict[str, str]):
         for k, v in data.items():
@@ -216,21 +215,19 @@ class OctoprintAccelerometerPlugin(octoprint.plugin.StartupPlugin,
 
     def _update_members_from_settings(self) -> None:
         self._logger.info("xxx update from settings ...")
-        self.anchor_point_coord_x_mm = self._settings.get_int(["anchor_point_coord_x_mm"])
-        self.anchor_point_coord_y_mm = self._settings.get_int(["anchor_point_coord_y_mm"])
-        self.anchor_point_coord_z_mm = self._settings.get_int(["anchor_point_coord_z_mm"])
         self.distance_x_mm = self._settings.get_int(["distance_x_mm"])
         self.distance_y_mm = self._settings.get_int(["distance_y_mm"])
         self.distance_z_mm = self._settings.get_int(["distance_z_mm"])
-        self.repetitions_x_count = self._settings.get_int(["repetitions_x_count"])
-        self.repetitions_y_count = self._settings.get_int(["repetitions_y_count"])
-        self.repetitions_z_count = self._settings.get_int(["repetitions_z_count"])
+        self.repetitions_count = self._settings.get_int(["repetitions_count"])
         self.speed_x_mm_s = self._settings.get_int(["speed_x_mm_s"])
         self.speed_y_mm_s = self._settings.get_int(["speed_y_mm_s"])
         self.speed_z_mm_s = self._settings.get_int(["speed_z_mm_s"])
         self.acceleration_x_mm_ss = self._settings.get_int(["acceleration_x_mm_ss"])
         self.acceleration_y_mm_ss = self._settings.get_int(["acceleration_y_mm_ss"])
         self.acceleration_z_mm_ss = self._settings.get_int(["acceleration_z_mm_ss"])
+        self.anchor_point_coord_x_mm = self._settings.get_int(["anchor_point_coord_x_mm"])
+        self.anchor_point_coord_y_mm = self._settings.get_int(["anchor_point_coord_y_mm"])
+        self.anchor_point_coord_z_mm = self._settings.get_int(["anchor_point_coord_z_mm"])
         self.runs_count = self._settings.get_int(["runs_count"])
         self.go_start = self._settings.get_boolean(["go_start"])
         self.return_start = self._settings.get_boolean(["return_start"])
@@ -247,7 +244,9 @@ class OctoprintAccelerometerPlugin(octoprint.plugin.StartupPlugin,
         self.do_sample_y = self._settings.get_boolean(["do_sample_y"])
         self.do_sample_z = self._settings.get_boolean(["do_sample_z"])
         self.recording_timespan_s = self._settings.get_float(["recording_timespan_s"])
+        self.repetitions_separation_s = self._settings.get_float(["repetitions_separation_s"])
         self.steps_separation_s = self._settings.get_float(["steps_separation_s"])
+        self.do_dry_run = self._settings.get_float(["do_dry_run"])
 
         self._compute_start_points()
 
@@ -262,8 +261,8 @@ class OctoprintAccelerometerPlugin(octoprint.plugin.StartupPlugin,
                                              self.anchor_point_coord_y_mm,
                                              self.anchor_point_coord_z_mm + int(self.distance_z_mm // 2))
 
-    def _estimate_duration(self) -> str:
-        axs: List[Literal["x", "y"]] = [ax for ax, enabled in [("x", self.do_sample_x), ("y", self.do_sample_y), ("z", self.do_sample_z)] if enabled]
+    def _estimate_duration(self) -> float:
+        axs: List[Literal["x", "y", "z"]] = [ax for ax, enabled in [("x", self.do_sample_x), ("y", self.do_sample_y), ("z", self.do_sample_z)] if enabled]
         steps = RunArgsGenerator(
             runs=self.runs_count,
             fx_start=self.frequency_start,
@@ -274,11 +273,8 @@ class OctoprintAccelerometerPlugin(octoprint.plugin.StartupPlugin,
             zeta_step=self.zeta_step,
             axis=axs,
             file_prefix="").generate()
-        duration_s = len(steps) * len(axs) * (self.recording_timespan_s + self.steps_separation_s) * self.runs_count
-        return (f"estimated gross sampling duration: {int(duration_s)}s "
-                f"({len(axs)} axes * {len(steps)} steps "
-                f"* ({self.recording_timespan_s}s recording + {self.steps_separation_s}s separation) "
-                f"* {self.runs_count} reruns)")
+        duration_s = len(steps) * len(axs) * (self.recording_timespan_s + +self.repetitions_separation_s + self.steps_separation_s) * self.runs_count
+        return duration_s
 
     def _estimate_get_parameter_dict(self) -> Dict[str, str]:
         params_dict: Dict[str, str] = dict()
