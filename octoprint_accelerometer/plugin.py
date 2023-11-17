@@ -3,6 +3,7 @@ from typing import Any, Dict, List, Literal, Callable
 import flask
 import octoprint.plugin
 from octoprint.server.util.flask import OctoPrintFlaskRequest
+from py3dpaxxel.controller.api import Adxl345
 from py3dpaxxel.sampling_tasks.series_argument_generator import RunArgsGenerator
 
 
@@ -58,6 +59,10 @@ class OctoprintAccelerometerPlugin(octoprint.plugin.StartupPlugin,
         self.steps_separation_s: float = 0
         self.do_dry_run: bool = False
 
+        # other parameters shared with UI
+
+        self.devices: List[str] = []
+
         # following parameters are computed from above parameters
 
         self.axis_x_sampling_start: Point3D = Point3D(0, 0, 0)
@@ -65,6 +70,10 @@ class OctoprintAccelerometerPlugin(octoprint.plugin.StartupPlugin,
         self.axis_z_sampling_start: Point3D = Point3D(0, 0, 0)
 
         pass
+
+    @staticmethod
+    def get_devices():
+        return [k for k in Adxl345.get_devices_dict().keys()]
 
     def get_api_commands(self):
         return dict(
@@ -156,6 +165,7 @@ class OctoprintAccelerometerPlugin(octoprint.plugin.StartupPlugin,
                           f"x_sampling={{{self.axis_x_sampling_start}}} "
                           f"y_sampling={{{self.axis_y_sampling_start}}} "
                           f"z_sampling={{{self.axis_z_sampling_start}}}")
+        self.devices = self.get_devices()
 
     def get_assets(self):
         # core UI here assets
@@ -197,7 +207,8 @@ class OctoprintAccelerometerPlugin(octoprint.plugin.StartupPlugin,
                 "sensor_output_data_rate_hz",
                 "data_remove_before_run",
                 "do_sample_x", "do_sample_y", "do_sample_z",
-                "recording_timespan_s", "repetitions_separation_s", "steps_separation_s"]
+                "recording_timespan_s", "repetitions_separation_s", "steps_separation_s",
+                "devices"]
 
     def _update_member_from_str_value(self, parameter: str, value: str):
         if parameter in self._get_ui_exposed_parameters():

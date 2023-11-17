@@ -1,18 +1,22 @@
 <form class="form-horizontal" onsubmit="return false;">
+    {% if "" != ui_device_name %}
+    <small class="muted">Detected device:</small>
+    <small class="muted" data-bind="text: ui_device_name"></small>
+    {% else %}
+    <small class="muted">&#9888; No device detected!</small>
+    {% endif %}
     <div class="control-group">
         <h4>Pattern</h4>
-
-
         <div class="">
             <div class="row-fluid">
-                <div class="span2"><h6>{{ _('Axis') }}</h6></div>
-                <div class="span2"><h6>{{ _('Distance') }}</h6></div>
-                <div class="span2"><h6>{{ _('Speed') }}</h6></div>
-                <div class="span2"><h6>{{ _('Acceleration') }}</h6></div>
+                <div class="span2"><h6>{{_('Axis')}}</h6></div>
+                <div class="span2"><h6>{{_('Distance')}}</h6></div>
+                <div class="span2"><h6>{{_('Speed')}}</h6></div>
+                <div class="span2"><h6>{{_('Acceleration')}}</h6></div>
             </div>
 
             <div>
-                <div class="row-fluid" style="margin-bottom: 5px; margin-right: 5px">
+                <div class="row-fluid">
                     <div class="span2">
                         X <input type="checkbox" data-bind="checked: ui_do_sample_x">
                     </div>
@@ -27,7 +31,7 @@
                     </div>
                 </div>
 
-                <div class="row-fluid" style="margin-bottom: 5px; margin-right: 5px">
+                <div class="row-fluid">
                     <div class="span2">
                         Y <input type="checkbox" data-bind="checked: ui_do_sample_y">
                     </div>
@@ -42,7 +46,7 @@
                     </div>
                 </div>
 
-                <div class="row-fluid" style="margin-bottom: 5px; margin-right: 5px">
+                <div class="row-fluid">
                     <div class="span2">
                         Z <input type="checkbox" data-bind="checked: ui_do_sample_z">
                     </div>
@@ -57,11 +61,11 @@
                     </div>
                 </div>
 
-                <div class="row-fluid" style="margin-bottom: 5px; margin-right: 5px">
+                <div class="row-fluid">
                     <div class="span2"></div>
-                    <div class="span2"> {{ _('[mm]')}}</div>
-                    <div class="span2"> {{ _('[mm/s]')}}</div>
-                    <div class="span2"> {{ _('[mm/s^2]')}}</div>
+                    <div class="span2"> {{_('[mm]')}}</div>
+                    <div class="span2"> {{_('[mm/s]')}}</div>
+                    <div class="span2"> {{_('[mm/s^2]')}}</div>
                 </div>
             </div>
         </div>
@@ -69,9 +73,9 @@
         <div class="">
             <label class="number">
                 <input type="number" class="input-mini text-right" min="1" max="10" data-bind="value: ui_repetitions_count">
-                <span class="help-inline">{{ _('rerun')}}</span>
+                <span class="help-inline">{{_('rerun')}}</span>
                 <span class="help-block">
-                    {{ _('<code>times</code> how often to repeat back and forth movement before one step is finished')}}
+                    {{_('<code>times</code> how often to repeat back and forth movement before one step is finished')}}
                 </span>
             </label>
         </div>
@@ -80,14 +84,14 @@
 
         <div class="">
             <div class="row-fluid">
-                <div class="span2"><h6>{{ _('Start') }}</h6></div>
-                <div class="span2"><h6>{{ _('Stop') }}</h6></div>
-                <div class="span2"><h6>{{ _('Step') }}</h6></div>
+                <div class="span2"><h6>{{_('Start') }}</h6></div>
+                <div class="span2"><h6>{{_('Stop') }}</h6></div>
+                <div class="span2"><h6>{{_('Step') }}</h6></div>
                 <div class="span4"></div>
             </div>
 
             <div>
-                <div class="row-fluid" style="margin-bottom: 5px; margin-right: 5px">
+                <div class="row-fluid">
                     <div class="span2">
                         <input type="number" class="input-mini text-right" min="0" max="100" data-bind="value: ui_frequency_start">
                     </div>
@@ -98,28 +102,31 @@
                         <input type="number" class="input-mini text-right" min="1" max="100" data-bind="value: ui_frequency_step">
                     </div>
                     <div class="span4">
-                        <span class="help-inline">{{ _('Input Shaping frequency')}}</span>
+                        <span class="help-inline">{{_('Input Shaping frequency')}}</span>
+                        <span class="muted">{{_('Steps: ')}}</span>
+                        <span class="muted" data-bind="text: ui_frequency_steps_total_count() < 0 ? '&#9888;' : ''"></span>
+                        <span class="muted" data-bind="text: ui_frequency_steps_total_count"></span>
                     </div>
 
                 </div>
-                <div class="row-fluid" style="margin-bottom: 5px; margin-right: 5px">
-                    <div class="span2"> {{ _('[Hz]')}}</div>
-                    <div class="span2"> {{ _('[Hz]')}}</div>
-                    <div class="span2">{{ _('[Hz]')}}</div>
+                <div class="row-fluid">
+                    <div class="span2"> {{_('[Hz]')}}</div>
+                    <div class="span2"> {{_('[Hz]')}}</div>
+                    <div class="span2">{{_('[Hz]')}}</div>
                 </div>
             </div>
         </div>
 
         <div class="">
             <div class="row-fluid">
-                <div class="span2"><h6>{{ _('Start') }}</h6></div>
-                <div class="span2"><h6>{{ _('Stop') }}</h6></div>
-                <div class="span2"><h6>{{ _('Step') }}</h6></div>
+                <div class="span2"><h6>{{_('Start') }}</h6></div>
+                <div class="span2"><h6>{{_('Stop') }}</h6></div>
+                <div class="span2"><h6>{{_('Step') }}</h6></div>
                 <div class="span4"></div>
             </div>
 
             <div>
-                <div class="row-fluid" style="margin-bottom: 5px; margin-right: 5px">
+                <div class="row-fluid">
                     <div class="span2">
                         <input type="number" class="input-mini text-right" min="0" max="100" data-bind="value: ui_zeta_start">
                     </div>
@@ -130,13 +137,16 @@
                         <input type="number" class="input-mini text-right" min="1" max="100" data-bind="value: ui_zeta_step">
                     </div>
                     <div class="span4">
-                        <span class="help-inline">{{ _('Input Shaping zeta parameter')}}</span>
+                        <span class="help-inline">{{_('Input Shaping zeta parameter')}}</span>
+                        <span class="muted">{{_('Steps: ')}}</span>
+                        <span class="muted" data-bind="text: ui_zeta_steps_total_count() < 0 ? '&#9888;' : ''"></span>
+                        <span class="muted" data-bind="text: ui_zeta_steps_total_count"></span>
                     </div>
                 </div>
-                <div class="row-fluid" style="margin-bottom: 5px; margin-right: 5px">
-                    <div class="span2"> {{ _('E^-2')}}</div>
-                    <div class="span2"> {{ _('E^-2')}}</div>
-                    <div class="span2"> {{ _('E^-2')}}</div>
+                <div class="row-fluid">
+                    <div class="span2"> {{_('E^-2')}}</div>
+                    <div class="span2"> {{_('E^-2')}}</div>
+                    <div class="span2"> {{_('E^-2')}}</div>
                 </div>
             </div>
         </div>
@@ -146,24 +156,25 @@
         <div class="">
             <label class="number">
                 <input type="number" class="input-mini text-right" min="0.1" max="10.0" step="0.1" data-bind="value: ui_recording_timespan_s">
-                <span class="help-inline">{{ _('[s] step recording time')}}</span>
+                <span class="help-inline">{{_('[s] step recording time')}}</span>
             </label>
         </div>
 
         <div class="">
             <label class="number">
                 <input type="number" class="input-mini text-right" min="0.1" max="1.0" step="0.1" data-bind="value: ui_repetitions_separation_s">
-                <span class="help-inline">{{ _('[s] pause in between back and forth repetitions')}}</span>
+                <span class="help-inline">{{_('[s] pause in between back and forth repetitions')}}</span>
             </label>
         </div>
 
         <div class="">
             <label class="number">
                 <input type="number" class="input-mini text-right" min="0.1" max="1.0" step="0.1" data-bind="value: ui_steps_separation_s">
-                <span class="help-inline">{{ _('[s] pause in between steps')}}</span>
+                <span class="help-inline">{{_('[s] pause in between steps')}}</span>
             </label>
         </div>
-        <span>{{ _('Estimated total recording time: ')}}</span><span class="" data-bind="text: ui_estimated_recording_duration_s"></span><span>{{ _('s')}}</span>
+        <span class="muted">{{ _('Estimated total recording time: ')}}</span>
+        <span class="muted" data-bind="text: ui_estimated_recording_duration_text() === '' ? '&#9888;' : ui_estimated_recording_duration_text"></span>
     </div>
     <hr/>
     <div class="control-group">

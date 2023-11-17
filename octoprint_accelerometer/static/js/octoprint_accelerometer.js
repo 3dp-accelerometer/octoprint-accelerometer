@@ -14,8 +14,8 @@ $(function() {
 
         self.plugin_name = "octoprint_accelerometer";
 
-        // variables shared among plugin and settings
-        self.ui_estimated_recording_duration_s = ko.observable();
+        // variables shared among plugin, settings and UI
+        self.ui_estimated_recording_duration_text = ko.observable();
         self.ui_do_sample_x = ko.observable();
         self.ui_do_sample_y = ko.observable();
         self.ui_do_sample_z = ko.observable();
@@ -39,6 +39,13 @@ $(function() {
         self.ui_repetitions_separation_s = ko.observable();
         self.ui_steps_separation_s = ko.observable();
 
+        // variables shared among plugin and UI
+        self.ui_device_name = ko.observable();
+
+        // variables shared with UI
+        self.ui_frequency_steps_total_count = ko.observable();
+        self.ui_zeta_steps_total_count = ko.observable();
+
         self.onStartupComplete = function () {
             self.plugin_settings = self.settings.settings.plugins.octoprint_accelerometer;
 
@@ -47,7 +54,7 @@ $(function() {
                 self.requestPluginEstimation();
             };
 
-            // register on settings changes
+            // register UI on settings changed
             var settings_observables = [
                 [self.plugin_settings.do_sample_x, self.ui_do_sample_x],
                 [self.plugin_settings.do_sample_y, self.ui_do_sample_y],
@@ -81,7 +88,7 @@ $(function() {
                 });
             }
 
-            // send UI data to plugin and fetch updates from plugin
+            // send UI changes to plugin
             var observables = [
                 [self.ui_do_sample_x, updatePluginDataAndRequestEstimation],
                 [self.ui_do_sample_y, updatePluginDataAndRequestEstimation],
@@ -111,6 +118,7 @@ $(function() {
                 observables[index][0].subscribe(observables[index][1]);
             }
 
+            // fetch data from plugin
             self.getPluginData();
         };
 
@@ -160,9 +168,21 @@ $(function() {
         };
 
         self.updateUiFromGetResponse = function (response) {
+            self.ui_frequency_steps_total_count(
+                Math.floor((self.ui_frequency_stop() - self.ui_frequency_start()) / self.ui_frequency_step())
+            );
+
+            self.ui_zeta_steps_total_count(
+                Math.floor((self.ui_zeta_stop() - self.ui_zeta_start()) / self.ui_zeta_step())
+            );
 
             if (Object.hasOwn(response, "estimate")) {
-                self.ui_estimated_recording_duration_s(response.estimate);
+                total_seconds = response.estimate;
+                minutes = Math.floor(total_seconds / 60);
+                seconds = Number(total_seconds - (minutes  * 60)).toFixed(1);
+                if (minutes >  0) { minutes = minutes + "m "; } else { minutes = ""; }
+                if (seconds >  0) { seconds = seconds + "s"; } else { seconds = ""; }
+                self.ui_estimated_recording_duration_text(minutes + seconds);
             }
 
             if (Object.hasOwn(response, "parameters")) {
@@ -188,6 +208,7 @@ $(function() {
                 var recording_timespan_s = response.parameters.recording_timespan_s;
                 var repetitions_separation_s = response.parameters.repetitions_separation_s;
                 var steps_separation_s = response.parameters.steps_separation_s;
+                var devices = response.parameters.devices;
 
                 if (do_sample_x) { self.ui_do_sample_x(do_sample_x); }
                 if (do_sample_y) { self.ui_do_sample_y(do_sample_y); }
@@ -211,6 +232,7 @@ $(function() {
                 if (recording_timespan_s) { self.ui_recording_timespan_s(recording_timespan_s); }
                 if (repetitions_separation_s) { self.ui_repetitions_separation_s(repetitions_separation_s); }
                 if (steps_separation_s) { self.ui_steps_separation_s(steps_separation_s); }
+                if (devices && devices.length > 0) { self.ui_device_name(devices[0]); } else { self.ui_device_name(""); }
             }
         };
 
