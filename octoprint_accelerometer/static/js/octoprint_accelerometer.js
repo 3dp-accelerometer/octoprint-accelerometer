@@ -6,6 +6,26 @@
  */
 $(function() {
 
+    // ----- GET/POST API
+
+    PLUGIN_NAME = "octoprint_accelerometer";
+
+    function requestGet(request, optional = "") {
+        return OctoPrint.simpleApiGet(PLUGIN_NAME +"?q="+ request + optional);
+    };
+
+    function requestCommandPost (command, payload) {
+        return OctoPrint.simpleApiCommand(PLUGIN_NAME, command, payload);
+    };
+
+    function pluginGetEstimate() { return requestGet("estimate"); }
+    function pluginGetAllParameters() { return requestGet("parameters"); }
+    function pluginGetParameters(names_list) { return requestGet("parameters", "&v=" + names_list); }
+
+    function pluginDoStartRecording() { return requestCommandPost("start_recording", {}); };
+    function pluginDoAbortRecording() { return requestCommandPost("abort_recording", {}); };
+    function pluginDoSetValues(values_dict) { return requestCommandPost("set_values", values_dict); };
+
     // ----- helper
 
     function secondsToReadableString(seconds) {
@@ -30,7 +50,7 @@ $(function() {
         self.settings = parameters[2];
         self.printer_state = parameters[3];
 
-        self.plugin_name = "octoprint_accelerometer";
+
 
         // variables shared among plugin, settings and UI
         self.ui_estimated_recording_duration_text = ko.observable();
@@ -148,14 +168,14 @@ $(function() {
                !self.printer_state.isPausing() &&
                 self.login_state.hasPermission(self.access.permissions.PRINT))
             {
-                self.requestCommandPost("start_recording", {});
+                pluginDoStartRecording();
             }
         };
 
         self.abortRecording = function () {
             if (self.login_state.hasPermission(self.access.permissions.CONNECTION))
             {
-                self.requestCommandPost("abort_recording", {});
+                pluginDoAbortRecording();
             }
         };
 
@@ -169,7 +189,7 @@ $(function() {
         }
 
         self.updatePluginDataFromUi = function () {
-            self.requestCommandPost("set_values",
+            pluginDoSetValues(
                 {"do_sample_x": self.ui_do_sample_x(),
                  "do_sample_y": self.ui_do_sample_y(),
                  "do_sample_z": self.ui_do_sample_z(),
@@ -195,14 +215,10 @@ $(function() {
                  });
         };
 
-        self.requestPluginEstimation = function () { self.requestGet("estimate"); };
-        self.requestAllParameters = function () { self.requestGet("parameters"); };
+        self.requestPluginEstimation = function () { pluginGetEstimate().done(self.updateUiFromGetResponse); };
+        self.requestAllParameters = function () { pluginGetAllParameters().done(self.updateUiFromGetResponse); };
 
         // ----- GET/POST plugin API
-
-        self.requestCommandPost = function (command, payload) {
-            OctoPrint.simpleApiCommand(self.plugin_name, command, payload);
-        };
 
         self.updateUiFromGetResponse = function (response) {
             self.ui_frequency_steps_total_count(
@@ -267,9 +283,6 @@ $(function() {
             }
         };
 
-        self.requestGet = function (request) {
-            OctoPrint.simpleApiGet(self.plugin_name +"?q="+ request).done(self.updateUiFromGetResponse);
-        };
     };
 
     // ----- settings view model
@@ -281,7 +294,15 @@ $(function() {
 
         self.ui_frequency_steps_total_count = ko.observable();
         self.ui_zeta_steps_total_count = ko.observable();
+        self.ui_estimated_recording_duration_text = ko.observable();
 
+        self.requestPluginEstimation = function () { pluginGetEstimate().done(self.updateUiFromGetResponse); };
+
+        self.updateUiFromGetResponse = function (response) {
+            if (Object.hasOwn(response, "estimate")) {
+                self.ui_estimated_recording_duration_text(secondsToReadableString(response.estimate));
+            }
+        };
 
         self.onStartupComplete = function () {
             var updateFrequencySteps = function () {
@@ -300,13 +321,28 @@ $(function() {
                         self.settings_view_model.settings.plugins.octoprint_accelerometer.zeta_step()));
             };
 
-            self.settings_view_model.settings.plugins.octoprint_accelerometer.frequency_start.subscribe(updateFrequencySteps);
-            self.settings_view_model.settings.plugins.octoprint_accelerometer.frequency_stop.subscribe(updateFrequencySteps);
-            self.settings_view_model.settings.plugins.octoprint_accelerometer.frequency_step.subscribe(updateFrequencySteps);
-            self.settings_view_model.settings.plugins.octoprint_accelerometer.zeta_start.subscribe(updateZetaSteps);
-            self.settings_view_model.settings.plugins.octoprint_accelerometer.zeta_stop.subscribe(updateZetaSteps);
-            self.settings_view_model.settings.plugins.octoprint_accelerometer.zeta_step.subscribe(updateZetaSteps);
+            self.settings_view_model.settings.plugins.octoprint_accelerometer.frequency_start.subscribe(
+                function() { updateFrequencySteps(); self.requestPluginEstimation(); });
+            self.settings_view_model.settings.plugins.octoprint_accelerometer.frequency_stop.subscribe(
+                function() { updateFrequencySteps(); self.requestPluginEstimation(); });
+            self.settings_view_model.settings.plugins.octoprint_accelerometer.frequency_step.subscribe(
+                function() { updateFrequencySteps(); self.requestPluginEstimation(); });
+            self.settings_view_model.settings.plugins.octoprint_accelerometer.zeta_start.subscribe(
+                function() { updateZetaSteps(); self.requestPluginEstimation(); });
+            self.settings_view_model.settings.plugins.octoprint_accelerometer.zeta_stop.subscribe(
+                function() { updateZetaSteps(); self.requestPluginEstimation(); });
+            self.settings_view_model.settings.plugins.octoprint_accelerometer.zeta_step.subscribe(
+                function() { updateZetaSteps(); self.requestPluginEstimation(); });
 
+            self.settings_view_model.settings.plugins.octoprint_accelerometer.do_sample_x.subscribe(self.requestPluginEstimation);
+            self.settings_view_model.settings.plugins.octoprint_accelerometer.do_sample_y.subscribe(self.requestPluginEstimation);
+            self.settings_view_model.settings.plugins.octoprint_accelerometer.do_sample_z.subscribe(self.requestPluginEstimation);
+            self.settings_view_model.settings.plugins.octoprint_accelerometer.recording_timespan_s.subscribe(self.requestPluginEstimation);
+            self.settings_view_model.settings.plugins.octoprint_accelerometer.repetitions_separation_s.subscribe(self.requestPluginEstimation);
+            self.settings_view_model.settings.plugins.octoprint_accelerometer.steps_separation_s.subscribe(self.requestPluginEstimation);
+            self.settings_view_model.settings.plugins.octoprint_accelerometer.runs_count.subscribe(self.requestPluginEstimation);
+
+            self.requestPluginEstimation();
             updateFrequencySteps();
             updateZetaSteps();
         };

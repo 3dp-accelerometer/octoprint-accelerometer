@@ -278,6 +278,9 @@
             </span>
         </div>
 
+        <span class="muted">{{ _('Estimated total recording time: ')}}</span>
+        <span class="muted" data-bind="text: ui_estimated_recording_duration_text() === '' ? '&#9888;' : ui_estimated_recording_duration_text"></span>
+
         <h4>Advanced</h4>
 
         <div class="controls">
