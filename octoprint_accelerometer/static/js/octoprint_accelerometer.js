@@ -8,9 +8,10 @@ $(function() {
     function AccelerometerViewModel(parameters) {
         var self = this;
 
-        self.loginState = parameters[0];
+        self.login_state = parameters[0];
         self.access = parameters[1];
         self.settings = parameters[2];
+        self.printer_state = parameters[3];
 
         self.plugin_name = "octoprint_accelerometer";
 
@@ -40,7 +41,8 @@ $(function() {
         self.ui_steps_separation_s = ko.observable();
 
         // variables shared among plugin and UI
-        self.ui_device_name = ko.observable();
+        self.ui_devices_seen = ko.observable();
+        self.ui_device = ko.observable();
 
         // variables shared with UI
         self.ui_frequency_steps_total_count = ko.observable();
@@ -123,17 +125,27 @@ $(function() {
         };
 
         self.startRecording = function () {
-            self.requestCommandPost("start_recording", {});
+            if (self.printer_state.isOperational() &&
+               !self.printer_state.isPrinting() &&
+               !self.printer_state.isCancelling() &&
+               !self.printer_state.isPausing() &&
+                self.login_state.hasPermission(self.access.permissions.PRINT))
+            {
+                self.requestCommandPost("start_recording", {});
+            }
         };
 
         self.abortRecording = function () {
-            self.requestCommandPost("abort_recording", {});
+            if (self.login_state.hasPermission(self.access.permissions.CONNECTION))
+            {
+                self.requestCommandPost("abort_recording", {});
+            }
         };
 
-        // plugin API
+        // ----- plugin API
 
         self.getPluginData = function () {
-            if (!self.loginState.hasPermission(self.access.permissions.CONNECTION)) { return; }
+            if (!self.login_state.hasPermission(self.access.permissions.CONNECTION)) { return; }
             self.requestPluginEstimation();
             self.requestAllParameters();
 
@@ -216,7 +228,8 @@ $(function() {
                 var recording_timespan_s = response.parameters.recording_timespan_s;
                 var repetitions_separation_s = response.parameters.repetitions_separation_s;
                 var steps_separation_s = response.parameters.steps_separation_s;
-                var devices = response.parameters.devices;
+                var devices_seen = response.parameters.devices_seen;
+                var device = response.parameters.device;
 
                 if (do_sample_x) { self.ui_do_sample_x(do_sample_x); }
                 if (do_sample_y) { self.ui_do_sample_y(do_sample_y); }
@@ -240,7 +253,8 @@ $(function() {
                 if (recording_timespan_s) { self.ui_recording_timespan_s(recording_timespan_s); }
                 if (repetitions_separation_s) { self.ui_repetitions_separation_s(repetitions_separation_s); }
                 if (steps_separation_s) { self.ui_steps_separation_s(steps_separation_s); }
-                if (devices && devices.length > 0) { self.ui_device_name(devices[0]); } else { self.ui_device_name(""); }
+                if (devices_seen) { self.ui_devices_seen(devices_seen); } else { self.ui_devices_seen([]); }
+                if (device) { self.ui_device(device); } else { self.ui_device("-"); }
             }
         };
 
@@ -254,7 +268,8 @@ $(function() {
         name: "accelerometerViewModel",
         dependencies: ["loginStateViewModel",
                        "accessViewModel",
-                       "settingsViewModel"],
+                       "settingsViewModel",
+                       "printerStateViewModel"],
         elements: [ "#tab_plugin_octoprint_accelerometer"]
     });
 });

@@ -1,10 +1,9 @@
 <form class="form-horizontal" onsubmit="return false;">
-    {% if "" != ui_device_name %}
+
+    <small class="muted" data-bind="text: ui_device() == '' ? '&#9888;' : ''"></small>
     <small class="muted">Detected device:</small>
-    <small class="muted" data-bind="text: ui_device_name"></small>
-    {% else %}
-    <small class="muted">&#9888; No device detected!</small>
-    {% endif %}
+    <small class="muted" data-bind="text: ui_device"></small>
+
     <div class="control-group">
         <h4>Pattern</h4>
         <div class="">
@@ -177,9 +176,11 @@
         <span class="muted" data-bind="text: ui_estimated_recording_duration_text() === '' ? '&#9888;' : ui_estimated_recording_duration_text"></span>
     </div>
 
-    <button type="button" class="btn btn-danger pull-right span2" data-bind = "click: abortRecording">Abort</button>
-    <button type="button" class="btn btn-primary pull-right span2" data-bind = "click: startRecording, enable: ui_estimated_recording_duration_text() !== ''">Start</button>
-    <br/><hr/>
+    <button type="button" class="btn btn-danger pull-right span2" data-bind="click: abortRecording">Abort</button>
+    <button type="button" class="btn btn-primary pull-right span2" data-bind="click: startRecording, enable: (ui_estimated_recording_duration_text() !== '') && printer_state.isOperational()">Start
+    </button>
+    <br/>
+    <hr/>
 
     <div class="control-group">
         <h4>Data Visualisation - TODO</h4>

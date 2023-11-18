@@ -1,10 +1,27 @@
+from logging import Logger
 from typing import Any, Dict, List, Literal, Callable
 
 import flask
 import octoprint.plugin
+from octoprint.printer import PrinterInterface
 from octoprint.server.util.flask import OctoPrintFlaskRequest
-from py3dpaxxel.controller.api import Adxl345
+from py3dpaxxel.cli.args import convert_axis_from_str
+from py3dpaxxel.controller.api import Adxl345, ErrorFifoOverflow, ErrorUnknownResponse
+from py3dpaxxel.controller.constants import OutputDataRateFromHz
+from py3dpaxxel.octoprint.api import OctoApi as Py3dpAxxelOctoApi
 from py3dpaxxel.sampling_tasks.series_argument_generator import RunArgsGenerator
+from py3dpaxxel.sampling_tasks.steps_series_runner import SamplingStepsSeriesRunner
+
+
+class Py3dpAxxelOcto(Py3dpAxxelOctoApi):
+    def __init__(self, printer: PrinterInterface, logger: Logger) -> None:
+        self.printer = printer
+        self.logger = logger
+
+    def send_commands(self, commands: List[str]) -> int:
+        self.logger.info(f"xxx sending commands: {commands}")
+        self.printer.commands(commands)
+        return 0
 
 
 class Point3D:
@@ -22,6 +39,7 @@ class OctoprintAccelerometerPlugin(octoprint.plugin.StartupPlugin,
                                    octoprint.plugin.AssetPlugin,
                                    octoprint.plugin.TemplatePlugin,
                                    octoprint.plugin.SimpleApiPlugin):
+    OUTPUT_FILE_NAME_PREFIX: str = "axxel"
 
     # noinspection PyMissingConstructor
     def __init__(self):
@@ -61,7 +79,10 @@ class OctoprintAccelerometerPlugin(octoprint.plugin.StartupPlugin,
 
         # other parameters shared with UI
 
-        self.devices: List[str] = []
+        self.devices_seen: List[str] = []
+        self.device: str = ""
+        self.controller_fifo_overrun_error: bool = False
+        self.controller_response_error: bool = False
 
         # following parameters are computed from above parameters
 
@@ -72,8 +93,13 @@ class OctoprintAccelerometerPlugin(octoprint.plugin.StartupPlugin,
         pass
 
     @staticmethod
-    def get_devices():
+    def get_devices() -> List[str]:
         return [k for k in Adxl345.get_devices_dict().keys()]
+
+    @staticmethod
+    def choose_device() -> str:
+        devices = OctoprintAccelerometerPlugin.get_devices()
+        return devices[0] if len(devices) > 0 else ""
 
     def get_api_commands(self):
         return dict(
@@ -96,7 +122,7 @@ class OctoprintAccelerometerPlugin(octoprint.plugin.StartupPlugin,
         known_args: Dict[str, Dict[str, Callable[[], Any]]] = {
             "q": {
                 "estimate": self._estimate_duration,
-                "parameters": self._estimate_get_parameter_dict,
+                "parameters": self._get_parameter_dict,
             }}
 
         for argument, value in request.args.items():
@@ -142,13 +168,13 @@ class OctoprintAccelerometerPlugin(octoprint.plugin.StartupPlugin,
             frequency_start=10,
             frequency_stop=60,
             frequency_step=10,
-            zeta_start=10,
-            zeta_stop=60,
-            zeta_step=10,
+            zeta_start=15,
+            zeta_stop=15,
+            zeta_step=5,
             sensor_output_data_rate_hz=800,
             data_remove_before_run=True,
             do_sample_x=True,
-            do_sample_y=True,
+            do_sample_y=False,
             do_sample_z=False,
             recording_timespan_s=1.5,
             repetitions_separation_s=0.1,
@@ -162,7 +188,8 @@ class OctoprintAccelerometerPlugin(octoprint.plugin.StartupPlugin,
 
     def on_after_startup(self):
         self._update_members_from_settings()
-        self.devices = self.get_devices()
+        self.devices_seen = self.get_devices()
+        self.device = self.choose_device()
 
     def get_assets(self):
         # core UI here assets
@@ -205,7 +232,7 @@ class OctoprintAccelerometerPlugin(octoprint.plugin.StartupPlugin,
                 "data_remove_before_run",
                 "do_sample_x", "do_sample_y", "do_sample_z",
                 "recording_timespan_s", "repetitions_separation_s", "steps_separation_s",
-                "devices"]
+                "devices_seen", "device"]
 
     def _update_member_from_str_value(self, parameter: str, value: str):
         if parameter in self._get_ui_exposed_parameters():
@@ -284,14 +311,59 @@ class OctoprintAccelerometerPlugin(octoprint.plugin.StartupPlugin,
         duration_s = len(steps) * len(axs) * (self.recording_timespan_s + +self.repetitions_separation_s + self.steps_separation_s) * self.runs_count
         return duration_s
 
-    def _estimate_get_parameter_dict(self) -> Dict[str, str]:
+    def _get_parameter_dict(self) -> Dict[str, str]:
         params_dict: Dict[str, str] = dict()
         for attribute in self._get_ui_exposed_parameters():
             params_dict[attribute] = getattr(self, attribute)
         return params_dict
 
+    def _get_selected_axis_str(self) -> List[Literal["x", "y", "z"]]:
+        return convert_axis_from_str(""
+                                     + "x" if self.do_sample_x else ""
+                                                                    + "y" if self.do_sample_y else ""
+                                                                                                   + "z" if self.do_sample_z else "")
+
     def _start_recording(self):
         self._logger.info("xxx start recording stub ...")
+        py3dpaxxel_octo = Py3dpAxxelOcto(self._printer, self._logger)
+        self.controller_fifo_overrun_error = False
+        self.controller_response_error = False
+
+        if not self._printer.is_operational():
+            self._logger.warn("received request to start recording but printer is not operational")
+            return
+
+        try:
+            SamplingStepsSeriesRunner(
+                octoprint_api=py3dpaxxel_octo,
+                controller_serial_device=self.device,
+                controller_record_timelapse_s=self.recording_timespan_s,
+                sensor_odr=OutputDataRateFromHz[self.sensor_output_data_rate_hz],
+                gcode_start_point_mm=(self.anchor_point_coord_x_mm, self.anchor_point_coord_y_mm, self.anchor_point_coord_z_mm),
+                gcode_axis=self._get_selected_axis_str(),
+                gcode_distance_mm=self.distance_x_mm,
+                gcode_repetitions=self.repetitions_count,
+                runs=self.runs_count,
+                fx_start=self.frequency_start,
+                fx_stop=self.frequency_stop,
+                fx_step=self.frequency_step,
+                zeta_start=self.zeta_start,
+                zeta_stop=self.zeta_stop,
+                zeta_step=self.zeta_step,
+                output_file_prefix=self.OUTPUT_FILE_NAME_PREFIX,
+                output_dir=self.get_plugin_data_folder(),
+                do_dry_run=self.do_dry_run).run()
+        except ErrorFifoOverflow as e:
+            self._logger.error("controller reported FiFo overrun")
+            self._logger.error(e)
+            self.controller_fifo_overrun_error = True
+        except ErrorUnknownResponse as e:
+            self.controller_response_error = True
+            self._logger.error("unknown response from controller")
+            self._logger.error(e)
+        except Exception as e:
+            self._logger.error("unknown controller API error")
+            self._logger.error(e)
 
     def _abort_recording(self):
         self._logger.info("xxx abort recording stub ...")
