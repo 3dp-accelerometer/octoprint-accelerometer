@@ -3,25 +3,14 @@ from typing import Any, Dict, List, Literal, Callable
 
 import flask
 import octoprint.plugin
-from octoprint.printer import PrinterInterface
 from octoprint.server.util.flask import OctoPrintFlaskRequest
 from py3dpaxxel.cli.args import convert_axis_from_str
 from py3dpaxxel.controller.api import Adxl345, ErrorFifoOverflow, ErrorUnknownResponse
 from py3dpaxxel.controller.constants import OutputDataRateFromHz
-from py3dpaxxel.octoprint.api import OctoApi as Py3dpAxxelOctoApi
 from py3dpaxxel.sampling_tasks.series_argument_generator import RunArgsGenerator
 from py3dpaxxel.sampling_tasks.steps_series_runner import SamplingStepsSeriesRunner
 
-
-class Py3dpAxxelOcto(Py3dpAxxelOctoApi):
-    def __init__(self, printer: PrinterInterface, logger: Logger) -> None:
-        self.printer = printer
-        self.logger = logger
-
-    def send_commands(self, commands: List[str]) -> int:
-        self.logger.info(f"xxx sending commands: {commands}")
-        self.printer.commands(commands)
-        return 0
+from octoprint_accelerometer.py3dpaxxel_octo import Py3dpAxxelOcto
 
 
 class Point3D:
