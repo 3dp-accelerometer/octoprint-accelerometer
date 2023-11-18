@@ -124,7 +124,7 @@ class OctoprintAccelerometerPlugin(octoprint.plugin.StartupPlugin,
         return dict(estimated_duration_s=self._estimate_duration())
 
     def get_template_configs(self):
-        return [dict(type="settings", custom_bindings=False),
+        return [dict(type="settings", custom_bindings=True),
                 dict(type="tab", custom_bindings=True)]
 
     def get_settings_defaults(self):

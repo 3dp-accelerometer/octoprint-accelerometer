@@ -5,7 +5,20 @@
  * License: Apache-2.0
  */
 $(function() {
-    function AccelerometerViewModel(parameters) {
+
+    function secondsToReadableString(seconds) {
+        minutes = Math.floor(seconds / 60);
+        seconds = Number(seconds - (minutes  * 60)).toFixed(1);
+        if (minutes >  0) { minutes = minutes + "m "; } else { minutes = ""; }
+        if (seconds >  0) { seconds = seconds + "s"; } else { seconds = ""; }
+        return minutes + seconds;
+    };
+
+    function effectiveSteps(start, stop, increment) {
+        return Math.floor((stop - start) / increment);
+    };
+
+    function AccelerometerTabViewModel(parameters) {
         var self = this;
 
         self.login_state = parameters[0];
@@ -189,20 +202,12 @@ $(function() {
 
         self.updateUiFromGetResponse = function (response) {
             self.ui_frequency_steps_total_count(
-                Math.floor((self.ui_frequency_stop() - self.ui_frequency_start()) / self.ui_frequency_step())
-            );
-
+                effectiveSteps(self.ui_frequency_start(), self.ui_frequency_stop(), self.ui_frequency_step()));
             self.ui_zeta_steps_total_count(
-                Math.floor((self.ui_zeta_stop() - self.ui_zeta_start()) / self.ui_zeta_step())
-            );
+                effectiveSteps(self.ui_zeta_start(), self.ui_zeta_stop(), self.ui_zeta_step()));
 
             if (Object.hasOwn(response, "estimate")) {
-                total_seconds = response.estimate;
-                minutes = Math.floor(total_seconds / 60);
-                seconds = Number(total_seconds - (minutes  * 60)).toFixed(1);
-                if (minutes >  0) { minutes = minutes + "m "; } else { minutes = ""; }
-                if (seconds >  0) { seconds = seconds + "s"; } else { seconds = ""; }
-                self.ui_estimated_recording_duration_text(minutes + seconds);
+                self.ui_estimated_recording_duration_text(secondsToReadableString(response.estimate));
             }
 
             if (Object.hasOwn(response, "parameters")) {
@@ -261,15 +266,56 @@ $(function() {
         self.requestGet = function (request) {
             OctoPrint.simpleApiGet(self.plugin_name +"?q="+ request).done(self.updateUiFromGetResponse);
         };
-    }
+    };
+
+    function AccelerometerSettingsViewModel(parameters) {
+        var self = this;
+
+        self.settings = parameters[0];
+
+        self.ui_frequency_steps_total_count = ko.observable();
+        self.ui_zeta_steps_total_count = ko.observable();
+
+        /*
+        self.onStartupComplete = function () {
+            var updateFrequencySteps = function () {
+                self.ui_frequency_steps_total_count(
+                    effectiveSteps(self.ui_frequency_start(),
+                    self.ui_frequency_stop(),
+                    self.ui_frequency_step()));
+            };
+
+            var updateZetaSteps = function () {
+                self.ui_zeta_steps_total_count(
+                    effectiveSteps(self.ui_zeta_start(),
+                    self.ui_zeta_stop(),
+                    self.ui_zeta_step()));
+            };
+
+            settings.plugins.octoprint_accelerometer.frequency_start.subscribe(updateFrequencySteps);
+            settings.plugins.octoprint_accelerometer.frequency_stop.subscribe(updateFrequencySteps);
+            settings.plugins.octoprint_accelerometer.frequency_step.subscribe(updateFrequencySteps);
+            settings.plugins.octoprint_accelerometer.zeta_start.subscribe(updateZetaSteps);
+            settings.plugins.octoprint_accelerometer.zeta_stop.subscribe(updateZetaSteps);
+            settings.plugins.octoprint_accelerometer.zeta_step.subscribe(updateZetaSteps);
+        };
+        */
+    };
 
     OCTOPRINT_VIEWMODELS.push({
-        construct: AccelerometerViewModel,
-        name: "accelerometerViewModel",
+        construct: AccelerometerTabViewModel,
+        name: "accelerometerTabViewModel",
         dependencies: ["loginStateViewModel",
                        "accessViewModel",
                        "settingsViewModel",
                        "printerStateViewModel"],
         elements: [ "#tab_plugin_octoprint_accelerometer"]
+    });
+
+    OCTOPRINT_VIEWMODELS.push({
+        construct: AccelerometerSettingsViewModel,
+        name: "accelerometerSettingsViewModel",
+        dependencies: ["settingsViewModel"],
+        elements: [ "#settings_plugin_octoprint_accelerometer"]
     });
 });
