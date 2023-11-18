@@ -107,7 +107,7 @@ class OctoprintAccelerometerPlugin(octoprint.plugin.StartupPlugin,
             self._start_data_processing()
 
     def on_api_get(self, request: OctoPrintFlaskRequest):
-        known_args: Dict[str, Dict[str, Callable[[], Any]]] = {
+        known_args: Dict[str, Dict[str, Callable[[Dict[str, str]], Any]]] = {
             "q": {
                 "estimate": self._estimate_duration,
                 "parameters": self._get_parameter_dict,
@@ -116,7 +116,7 @@ class OctoprintAccelerometerPlugin(octoprint.plugin.StartupPlugin,
         for argument, value in request.args.items():
             if argument in known_args.keys():
                 if value in known_args[argument]:
-                    return flask.jsonify({f"{value}": known_args[argument][value]()})
+                    return flask.jsonify({f"{value}": known_args[argument][value](request.args)})
 
         return flask.jsonify(known_requests=[(k, [k for k in v.keys()]) for k, v in known_args.items()])
 
@@ -223,7 +223,7 @@ class OctoprintAccelerometerPlugin(octoprint.plugin.StartupPlugin,
             value_type = type(old_value)
             setattr(self, parameter, value_type(value))
             new_value = getattr(self, parameter)
-            self._logger.info(f"xxx update {parameter}: {old_value} -> {new_value} from api")
+            self._logger.debug(f"xxx update {parameter}: {old_value} -> {new_value} from api")
 
     def _update_members_from_api(self, data: Dict[str, str]):
         for k, v in data.items():
@@ -232,7 +232,7 @@ class OctoprintAccelerometerPlugin(octoprint.plugin.StartupPlugin,
         self._compute_start_points()
 
     def _update_members_from_settings(self) -> None:
-        self._logger.info("xxx update from settings ...")
+        self._logger.debug("xxx update from settings ...")
         self.distance_x_mm = self._settings.get_int(["distance_x_mm"])
         self.distance_y_mm = self._settings.get_int(["distance_y_mm"])
         self.distance_z_mm = self._settings.get_int(["distance_z_mm"])
@@ -279,7 +279,7 @@ class OctoprintAccelerometerPlugin(octoprint.plugin.StartupPlugin,
                                              self.anchor_point_coord_y_mm,
                                              self.anchor_point_coord_z_mm + int(self.distance_z_mm // 2))
 
-    def _estimate_duration(self) -> float:
+    def _estimate_duration(self, _args: Dict[str, str] = None) -> float:
         axs: List[Literal["x", "y", "z"]] = [ax for ax, enabled in [("x", self.do_sample_x), ("y", self.do_sample_y), ("z", self.do_sample_z)] if enabled]
         steps = RunArgsGenerator(
             runs=self.runs_count,
@@ -291,13 +291,24 @@ class OctoprintAccelerometerPlugin(octoprint.plugin.StartupPlugin,
             zeta_step=self.zeta_step,
             axis=axs,
             file_prefix="").generate()
-        duration_s = len(steps) * len(axs) * (self.recording_timespan_s + +self.repetitions_separation_s + self.steps_separation_s) * self.runs_count
+        duration_s = len(steps) * (self.recording_timespan_s + self.repetitions_separation_s + self.steps_separation_s) * self.runs_count
         return duration_s
 
-    def _get_parameter_dict(self) -> Dict[str, str]:
+    def _get_parameter_dict(self, args: Dict[str, str] = None) -> Dict[str, str]:
+        key_name: str = "v"
+        requested_values: List[str] = []
+        if args and key_name in args.keys() and args[key_name] is not None:
+            requested_values.extend(args[key_name].split(","))
+
+        # reply all parameters if no names were explicitly specified
+        requested_values = self._get_ui_exposed_parameters() if len(requested_values) == 0 else requested_values
+
         params_dict: Dict[str, str] = dict()
-        for attribute in self._get_ui_exposed_parameters():
-            params_dict[attribute] = getattr(self, attribute)
+        exposed_parameters = self._get_ui_exposed_parameters()
+
+        for parameter_name in [pn for pn in requested_values if pn in exposed_parameters]:
+            params_dict[parameter_name] = getattr(self, parameter_name)
+        self._logger.debug(f"xxx supply with requested parameters: {params_dict}")
         return params_dict
 
     def _get_selected_axis_str(self) -> List[Literal["x", "y", "z"]]:
@@ -307,7 +318,7 @@ class OctoprintAccelerometerPlugin(octoprint.plugin.StartupPlugin,
                                                                                                    + "z" if self.do_sample_z else "")
 
     def _start_recording(self):
-        self._logger.info("xxx start recording stub ...")
+        self._logger.debug("xxx start recording stub ...")
         py3dpaxxel_octo = Py3dpAxxelOcto(self._printer, self._logger)
         self.controller_fifo_overrun_error = False
         self.controller_response_error = False
@@ -315,8 +326,8 @@ class OctoprintAccelerometerPlugin(octoprint.plugin.StartupPlugin,
         if not self._printer.is_operational():
             self._logger.warn("received request to start recording but printer is not operational")
             return
-
         try:
+            self._logger.info("xxx start recording ...")
             SamplingStepsSeriesRunner(
                 octoprint_api=py3dpaxxel_octo,
                 controller_serial_device=self.device,
