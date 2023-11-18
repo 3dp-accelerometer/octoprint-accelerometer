@@ -6,6 +6,8 @@
  */
 $(function() {
 
+    // ----- helper
+
     function secondsToReadableString(seconds) {
         minutes = Math.floor(seconds / 60);
         seconds = Number(seconds - (minutes  * 60)).toFixed(1);
@@ -17,6 +19,8 @@ $(function() {
     function effectiveSteps(start, stop, increment) {
         return Math.floor((stop - start) / increment);
     };
+
+    // ----- tab view model
 
     function AccelerometerTabViewModel(parameters) {
         var self = this;
@@ -268,16 +272,23 @@ $(function() {
         };
     };
 
+    // ----- settings view model
+
     function AccelerometerSettingsViewModel(parameters) {
         var self = this;
 
-        self.settings = parameters[0];
+        //self.settings = parameters[0].settings;
 
         self.ui_frequency_steps_total_count = ko.observable();
         self.ui_zeta_steps_total_count = ko.observable();
 
-        /*
+
         self.onStartupComplete = function () {
+        self.settings = parameters[0].settings;
+
+        self.ui_frequency_steps_total_count(1);
+        self.ui_zeta_steps_total_count(2);
+        /*
             var updateFrequencySteps = function () {
                 self.ui_frequency_steps_total_count(
                     effectiveSteps(self.ui_frequency_start(),
@@ -298,9 +309,11 @@ $(function() {
             settings.plugins.octoprint_accelerometer.zeta_start.subscribe(updateZetaSteps);
             settings.plugins.octoprint_accelerometer.zeta_stop.subscribe(updateZetaSteps);
             settings.plugins.octoprint_accelerometer.zeta_step.subscribe(updateZetaSteps);
-        };
         */
+        };
     };
+
+    // -----
 
     OCTOPRINT_VIEWMODELS.push({
         construct: AccelerometerTabViewModel,
@@ -309,13 +322,13 @@ $(function() {
                        "accessViewModel",
                        "settingsViewModel",
                        "printerStateViewModel"],
-        elements: [ "#tab_plugin_octoprint_accelerometer"]
+        elements: ["#tab_plugin_octoprint_accelerometer"]
     });
 
     OCTOPRINT_VIEWMODELS.push({
         construct: AccelerometerSettingsViewModel,
         name: "accelerometerSettingsViewModel",
         dependencies: ["settingsViewModel"],
-        elements: [ "#settings_plugin_octoprint_accelerometer"]
+        elements: ["#settings_plugin_octoprint_accelerometer"]
     });
 });
