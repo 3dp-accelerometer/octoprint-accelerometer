@@ -277,39 +277,38 @@ $(function() {
     function AccelerometerSettingsViewModel(parameters) {
         var self = this;
 
-        //self.settings = parameters[0].settings;
+        self.settings_view_model = parameters[0];
 
         self.ui_frequency_steps_total_count = ko.observable();
         self.ui_zeta_steps_total_count = ko.observable();
 
 
         self.onStartupComplete = function () {
-        self.settings = parameters[0].settings;
-
-        self.ui_frequency_steps_total_count(1);
-        self.ui_zeta_steps_total_count(2);
-        /*
             var updateFrequencySteps = function () {
                 self.ui_frequency_steps_total_count(
-                    effectiveSteps(self.ui_frequency_start(),
-                    self.ui_frequency_stop(),
-                    self.ui_frequency_step()));
+                    effectiveSteps(
+                    self.settings_view_model.settings.plugins.octoprint_accelerometer.frequency_start(),
+                    self.settings_view_model.settings.plugins.octoprint_accelerometer.frequency_stop(),
+                    self.settings_view_model.settings.plugins.octoprint_accelerometer.frequency_step()));
             };
 
             var updateZetaSteps = function () {
                 self.ui_zeta_steps_total_count(
-                    effectiveSteps(self.ui_zeta_start(),
-                    self.ui_zeta_stop(),
-                    self.ui_zeta_step()));
+                    effectiveSteps(
+                        self.settings_view_model.settings.plugins.octoprint_accelerometer.zeta_start(),
+                        self.settings_view_model.settings.plugins.octoprint_accelerometer.zeta_stop(),
+                        self.settings_view_model.settings.plugins.octoprint_accelerometer.zeta_step()));
             };
 
-            settings.plugins.octoprint_accelerometer.frequency_start.subscribe(updateFrequencySteps);
-            settings.plugins.octoprint_accelerometer.frequency_stop.subscribe(updateFrequencySteps);
-            settings.plugins.octoprint_accelerometer.frequency_step.subscribe(updateFrequencySteps);
-            settings.plugins.octoprint_accelerometer.zeta_start.subscribe(updateZetaSteps);
-            settings.plugins.octoprint_accelerometer.zeta_stop.subscribe(updateZetaSteps);
-            settings.plugins.octoprint_accelerometer.zeta_step.subscribe(updateZetaSteps);
-        */
+            self.settings_view_model.settings.plugins.octoprint_accelerometer.frequency_start.subscribe(updateFrequencySteps);
+            self.settings_view_model.settings.plugins.octoprint_accelerometer.frequency_stop.subscribe(updateFrequencySteps);
+            self.settings_view_model.settings.plugins.octoprint_accelerometer.frequency_step.subscribe(updateFrequencySteps);
+            self.settings_view_model.settings.plugins.octoprint_accelerometer.zeta_start.subscribe(updateZetaSteps);
+            self.settings_view_model.settings.plugins.octoprint_accelerometer.zeta_stop.subscribe(updateZetaSteps);
+            self.settings_view_model.settings.plugins.octoprint_accelerometer.zeta_step.subscribe(updateZetaSteps);
+
+            updateFrequencySteps();
+            updateZetaSteps();
         };
     };
 
