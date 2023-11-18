@@ -176,7 +176,11 @@
         <span class="muted">{{ _('Estimated total recording time: ')}}</span>
         <span class="muted" data-bind="text: ui_estimated_recording_duration_text() === '' ? '&#9888;' : ui_estimated_recording_duration_text"></span>
     </div>
-    <hr/>
+
+    <button type="button" class="btn btn-danger pull-right span2" data-bind = "click: abortRecording">Abort</button>
+    <button type="button" class="btn btn-primary pull-right span2" data-bind = "click: startRecording, enable: ui_estimated_recording_duration_text() !== ''">Start</button>
+    <br/><hr/>
+
     <div class="control-group">
         <h4>Data Visualisation - TODO</h4>
     </div>

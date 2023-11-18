@@ -122,6 +122,14 @@ $(function() {
             self.getPluginData();
         };
 
+        self.startRecording = function () {
+            self.requestCommandPost("start_recording", {});
+        };
+
+        self.abortRecording = function () {
+            self.requestCommandPost("abort_recording", {});
+        };
+
         // plugin API
 
         self.getPluginData = function () {

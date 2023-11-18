@@ -79,19 +79,20 @@ class OctoprintAccelerometerPlugin(octoprint.plugin.StartupPlugin,
         return dict(
             set_values=[],
             start_recording=[],
+            abort_recording=[],
             start_data_processing=[])
 
     def on_api_command(self, command, data):
-        self._logger.info(f"xxx on API POST command: {command} data: {data}")
         if command == "set_values":
             self._update_members_from_api(data)
         elif command == "start_recording":
             self._start_recording()
+        elif command == "abort_recording":
+            self._abort_recording()
         elif command == "start_data_processing":
             self._start_data_processing()
 
     def on_api_get(self, request: OctoPrintFlaskRequest):
-        self._logger.info(f"xxx on API GET: {request.args}")
         known_args: Dict[str, Dict[str, Callable[[], Any]]] = {
             "q": {
                 "estimate": self._estimate_duration,
@@ -161,10 +162,6 @@ class OctoprintAccelerometerPlugin(octoprint.plugin.StartupPlugin,
 
     def on_after_startup(self):
         self._update_members_from_settings()
-        self._logger.info(f"start points: "
-                          f"x_sampling={{{self.axis_x_sampling_start}}} "
-                          f"y_sampling={{{self.axis_y_sampling_start}}} "
-                          f"z_sampling={{{self.axis_z_sampling_start}}}")
         self.devices = self.get_devices()
 
     def get_assets(self):
@@ -294,7 +291,10 @@ class OctoprintAccelerometerPlugin(octoprint.plugin.StartupPlugin,
         return params_dict
 
     def _start_recording(self):
-        self._logger.info("xxx start recording stub ....")
+        self._logger.info("xxx start recording stub ...")
+
+    def _abort_recording(self):
+        self._logger.info("xxx abort recording stub ...")
 
     def _start_data_processing(self):
-        self._logger.info("xxx start data processing stub ....")
+        self._logger.info("xxx start data processing stub ...")
