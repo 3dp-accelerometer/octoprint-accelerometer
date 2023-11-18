@@ -1,4 +1,3 @@
-from logging import Logger
 from typing import Any, Dict, List, Literal, Callable
 
 import flask
@@ -181,12 +180,7 @@ class OctoprintAccelerometerPlugin(octoprint.plugin.StartupPlugin,
         self.device = self.choose_device()
 
     def get_assets(self):
-        # core UI here assets
-        return {
-            "js": ["js/octoprint_accelerometer.js"],
-            "css": ["css/octoprint_accelerometer.css"],
-            "less": ["less/octoprint_accelerometer.less"]
-        }
+        return {"js": ["js/octoprint_accelerometer.js"]}
 
     def get_update_information(self):
         # see https://docs.octoprint.org/en/master/bundledplugins/softwareupdate.html
