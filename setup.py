@@ -15,7 +15,7 @@ plugin_package = "octoprint_accelerometer"
 plugin_name = "Accelerometer"
 
 # The plugin's version. Can be overwritten within OctoPrint's internal data via __plugin_version__ in the plugin module
-plugin_version = "0.1.0"
+plugin_version = "0.1.1"
 
 # The plugin's description. Can be overwritten within OctoPrint's internal data via __plugin_description__ in the plugin
 # module
@@ -35,7 +35,7 @@ plugin_license = "Apache-2.0"
 
 # Any additional requirements besides OctoPrint should be listed here
 plugin_requires = [
-    "py3dpaxxel @ git+https://github.com/3dp-accelerometer/py3dpaxxel.git@v0.1.6",
+    "py3dpaxxel @ git+https://github.com/3dp-accelerometer/py3dpaxxel.git@v0.1.7",
 ]
 
 # --------------------------------------------------------------------------------------------------------------------
