@@ -1,15 +1,13 @@
-from typing import Any, Dict, List, Literal, Callable
+from typing import Any, Dict, List, Literal, Callable, Optional
 
 import flask
 import octoprint.plugin
 from octoprint.server.util.flask import OctoPrintFlaskRequest
 from py3dpaxxel.cli.args import convert_axis_from_str
-from py3dpaxxel.controller.api import Adxl345, ErrorFifoOverflow, ErrorUnknownResponse
-from py3dpaxxel.controller.constants import OutputDataRateFromHz
+from py3dpaxxel.controller.api import Adxl345
 from py3dpaxxel.sampling_tasks.series_argument_generator import RunArgsGenerator
-from py3dpaxxel.sampling_tasks.steps_series_runner import SamplingStepsSeriesRunner
 
-from octoprint_accelerometer.py3dpaxxel_octo import Py3dpAxxelOcto
+from octoprint_accelerometer.record_step_series import RecordStepSeriesRunner
 
 
 class Point3D:
@@ -78,7 +76,8 @@ class OctoprintAccelerometerPlugin(octoprint.plugin.StartupPlugin,
         self.axis_y_sampling_start: Point3D = Point3D(0, 0, 0)
         self.axis_z_sampling_start: Point3D = Point3D(0, 0, 0)
 
-        pass
+        # recording runner: once constructed before invocation all properties shall be updated
+        self.runner: Optional[RecordStepSeriesRunner] = None
 
     @staticmethod
     def get_devices() -> List[str]:
@@ -178,6 +177,7 @@ class OctoprintAccelerometerPlugin(octoprint.plugin.StartupPlugin,
         self._update_members_from_settings()
         self.devices_seen = self.get_devices()
         self.device = self.choose_device()
+        self.runner = self._construct_new_step_series_runner()
 
     def get_assets(self):
         return {"js": ["js/octoprint_accelerometer.js"]}
@@ -317,47 +317,59 @@ class OctoprintAccelerometerPlugin(octoprint.plugin.StartupPlugin,
                                                                     + "y" if self.do_sample_y else ""
                                                                                                    + "z" if self.do_sample_z else "")
 
-    def _start_recording(self):
-        self._logger.debug("xxx start recording stub ...")
-        py3dpaxxel_octo = Py3dpAxxelOcto(self._printer, self._logger)
-        self.controller_fifo_overrun_error = False
-        self.controller_response_error = False
+    def _construct_new_step_series_runner(self) -> RecordStepSeriesRunner:
+        return RecordStepSeriesRunner(
+            logger=self._logger,
+            printer=self._printer,
+            controller_serial_device=self.device,
+            controller_record_timelapse_s=self.recording_timespan_s,
+            controller_decode_timeout_s=10.0,  # todo: either configurable or pull out from here
+            sensor_odr_hz=self.sensor_output_data_rate_hz,
+            gcode_start_point_mm=(self.anchor_point_coord_x_mm, self.anchor_point_coord_y_mm, self.anchor_point_coord_z_mm),
+            gcode_axis=self._get_selected_axis_str(),
+            gcode_distance_mm=self.distance_x_mm,
+            gcode_repetitions_count=self.repetitions_count,
+            gcode_series_count=self.runs_count,
+            frequency_start=self.frequency_start,
+            frequency_stop=self.frequency_stop,
+            frequency_step=self.frequency_step,
+            zeta_start=self.zeta_start,
+            zeta_stop=self.zeta_stop,
+            zeta_step=self.zeta_step,
+            output_file_prefix=self.OUTPUT_FILE_NAME_PREFIX,
+            output_dir=self.get_plugin_data_folder(),
+            do_dry_run=self.do_dry_run)
 
-        if not self._printer.is_operational():
-            self._logger.warn("received request to start recording but printer is not operational")
-            return
-        try:
-            self._logger.info("xxx start recording ...")
-            SamplingStepsSeriesRunner(
-                octoprint_api=py3dpaxxel_octo,
-                controller_serial_device=self.device,
-                controller_record_timelapse_s=self.recording_timespan_s,
-                sensor_odr=OutputDataRateFromHz[self.sensor_output_data_rate_hz],
-                gcode_start_point_mm=(self.anchor_point_coord_x_mm, self.anchor_point_coord_y_mm, self.anchor_point_coord_z_mm),
-                gcode_axis=self._get_selected_axis_str(),
-                gcode_distance_mm=self.distance_x_mm,
-                gcode_repetitions=self.repetitions_count,
-                runs=self.runs_count,
-                fx_start=self.frequency_start,
-                fx_stop=self.frequency_stop,
-                fx_step=self.frequency_step,
-                zeta_start=self.zeta_start,
-                zeta_stop=self.zeta_stop,
-                zeta_step=self.zeta_step,
-                output_file_prefix=self.OUTPUT_FILE_NAME_PREFIX,
-                output_dir=self.get_plugin_data_folder(),
-                do_dry_run=self.do_dry_run).run()
-        except ErrorFifoOverflow as e:
-            self._logger.error("controller reported FiFo overrun")
-            self._logger.error(e)
-            self.controller_fifo_overrun_error = True
-        except ErrorUnknownResponse as e:
-            self.controller_response_error = True
-            self._logger.error("unknown response from controller")
-            self._logger.error(e)
-        except Exception as e:
-            self._logger.error("unknown controller API error")
-            self._logger.error(e)
+    def _start_recording(self):
+        self.runner.controller_serial_device = self.device
+        self.runner.controller_record_timelapse_s = self.recording_timespan_s
+        self.runner.sensor_odr_hz = self.sensor_output_data_rate_hz
+
+        # todo acceleration
+        # todo speed
+
+        self.runner.frequency_start = self.frequency_start
+        self.runner.frequency_stop = self.frequency_stop
+        self.runner.frequency_step = self.frequency_step
+
+        self.runner.zeta_start = self.zeta_start
+        self.runner.zeta_stop = self.zeta_stop
+        self.runner.zeta_step = self.zeta_step
+
+        self.runner.gcode_repetitions_count = self.repetitions_count
+        self.runner.gcode_series_count = self.runs_count
+        self.runner.gcode_start_point_mm = (self.anchor_point_coord_x_mm, self.anchor_point_coord_y_mm, self.anchor_point_coord_z_mm)
+        self.runner.gcode_axis = self._get_selected_axis_str()
+        self.runner.gcode_distance_mm = self.distance_x_mm  # todo: x y z distances
+
+        self.runner.do_dry_run = self.do_dry_run
+
+        if not self.runner.is_running():
+            self.runner.run()
+        else:
+            self._logger.warning("requested start recording but recording task is still running")
+
+        # todo: receive thread event on finished
 
     def _abort_recording(self):
         self._logger.info("xxx abort recording stub ...")

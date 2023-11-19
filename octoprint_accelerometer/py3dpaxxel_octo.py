@@ -6,6 +6,7 @@ from py3dpaxxel.octoprint.api import OctoApi as Py3dpAxxelOctoApi
 
 
 class Py3dpAxxelOcto(Py3dpAxxelOctoApi):
+
     def __init__(self, printer: PrinterInterface, logger: Logger) -> None:
         self.printer = printer
         self.logger = logger
