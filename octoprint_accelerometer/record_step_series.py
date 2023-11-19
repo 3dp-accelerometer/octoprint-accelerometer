@@ -46,8 +46,8 @@ class RecordStepSeriesRunner:
                  gcode_start_point_mm: Tuple[int, int, int],
                  gcode_axis: List[Literal["x", "y", "z"]],
                  gcode_distance_mm: int,
-                 gcode_repetitions_count: int,
-                 gcode_series_count: int,
+                 gcode_step_count: int,
+                 gcode_sequence_count: int,
                  frequency_start: int,
                  frequency_stop: int,
                  frequency_step: int,
@@ -69,8 +69,8 @@ class RecordStepSeriesRunner:
         self._gcode_start_point_mm: Tuple[int, int, int] = gcode_start_point_mm
         self._gcode_axis: List[Literal["x", "y", "z"]] = gcode_axis
         self._gcode_distance_mm: int = gcode_distance_mm
-        self._gcode_repetitions_count: int = gcode_repetitions_count
-        self._gcode_series_count: int = gcode_series_count
+        self._gcode_step_count: int = gcode_step_count
+        self._gcode_sequence_count: int = gcode_sequence_count
         self._frequency_start: int = frequency_start
         self._frequency_stop: int = frequency_stop
         self._frequency_step: int = frequency_step
@@ -139,20 +139,20 @@ class RecordStepSeriesRunner:
         self._gcode_distance_mm = gcode_distance_mm
 
     @property
-    def gcode_repetitions_count(self) -> int:
-        return self._gcode_repetitions_count
+    def gcode_step_count(self) -> int:
+        return self._gcode_step_count
 
-    @gcode_repetitions_count.setter
-    def gcode_repetitions_count(self, gcode_repetitions_count: int):
-        self._gcode_repetitions_count = gcode_repetitions_count
+    @gcode_step_count.setter
+    def gcode_step_count(self, gcode_step_count: int):
+        self._gcode_step_count = gcode_step_count
 
     @property
-    def gcode_series_count(self) -> int:
-        return self._gcode_series_count
+    def gcode_sequence_count(self) -> int:
+        return self._gcode_sequence_count
 
-    @gcode_series_count.setter
-    def gcode_series_count(self, gcode_series_count: int):
-        self._gcode_series_count = gcode_series_count
+    @gcode_sequence_count.setter
+    def gcode_sequence_count(self, gcode_sequence_count: int):
+        self._gcode_sequence_count = gcode_sequence_count
 
     @property
     def frequency_start(self) -> int:
@@ -256,8 +256,8 @@ class RecordStepSeriesRunner:
                         gcode_start_point_mm=self.gcode_start_point_mm,
                         gcode_axis=self.gcode_axis,
                         gcode_distance_mm=self.gcode_distance_mm,
-                        gcode_repetitions=self.gcode_repetitions_count,
-                        runs=self.gcode_series_count,
+                        gcode_step_repeat_count=self.gcode_step_count,
+                        gcode_sequence_repeat_count=self.gcode_sequence_count,
                         fx_start=self.frequency_start,
                         fx_stop=self.frequency_stop,
                         fx_step=self.frequency_step,

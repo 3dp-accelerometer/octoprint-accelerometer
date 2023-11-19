@@ -4,7 +4,7 @@ import flask
 import octoprint.plugin
 from octoprint.server.util.flask import OctoPrintFlaskRequest
 from py3dpaxxel.cli.args import convert_axis_from_str
-from py3dpaxxel.controller.api import Adxl345
+from py3dpaxxel.controller.api import Py3dpAxxel
 from py3dpaxxel.sampling_tasks.series_argument_generator import RunArgsGenerator
 
 from octoprint_accelerometer.record_step_series import RecordStepSeriesRunner
@@ -33,7 +33,7 @@ class OctoprintAccelerometerPlugin(octoprint.plugin.StartupPlugin,
         self.distance_x_mm: int = 0
         self.distance_y_mm: int = 0
         self.distance_z_mm: int = 0
-        self.repetitions_count: int = 0
+        self.step_count: int = 0
         self.speed_x_mm_s: int = 0
         self.speed_y_mm_s: int = 0
         self.speed_z_mm_s: int = 0
@@ -43,7 +43,7 @@ class OctoprintAccelerometerPlugin(octoprint.plugin.StartupPlugin,
         self.anchor_point_coord_x_mm: int = 0
         self.anchor_point_coord_y_mm: int = 0
         self.anchor_point_coord_z_mm: int = 0
-        self.runs_count: int = 0
+        self.sequence_count: int = 0
         self.go_start: bool = False
         self.return_start: bool = False
         self.auto_home: bool = False
@@ -59,8 +59,8 @@ class OctoprintAccelerometerPlugin(octoprint.plugin.StartupPlugin,
         self.do_sample_y: bool = False
         self.do_sample_z: bool = False
         self.recording_timespan_s: float = 0
-        self.repetitions_separation_s: float = 0
-        self.steps_separation_s: float = 0
+        self.sequence_separation_s: float = 0
+        self.step_separation_s: float = 0
         self.do_dry_run: bool = False
 
         # other parameters shared with UI
@@ -81,7 +81,7 @@ class OctoprintAccelerometerPlugin(octoprint.plugin.StartupPlugin,
 
     @staticmethod
     def get_devices() -> List[str]:
-        return [k for k in Adxl345.get_devices_dict().keys()]
+        return [k for k in Py3dpAxxel.get_devices_dict().keys()]
 
     @staticmethod
     def choose_device() -> str:
@@ -138,7 +138,7 @@ class OctoprintAccelerometerPlugin(octoprint.plugin.StartupPlugin,
             distance_x_mm=10,
             distance_y_mm=10,
             distance_z_mm=10,
-            repetitions_count=2,
+            step_count=2,
             speed_x_mm_s=100,
             speed_y_mm_s=100,
             speed_z_mm_s=100,
@@ -148,7 +148,7 @@ class OctoprintAccelerometerPlugin(octoprint.plugin.StartupPlugin,
             anchor_point_coord_x_mm=anchor_point.x,
             anchor_point_coord_y_mm=anchor_point.y,
             anchor_point_coord_z_mm=anchor_point.z,
-            runs_count=1,
+            sequence_count=1,
             go_start=True,
             return_start=True,
             auto_home=True,
@@ -164,8 +164,8 @@ class OctoprintAccelerometerPlugin(octoprint.plugin.StartupPlugin,
             do_sample_y=False,
             do_sample_z=False,
             recording_timespan_s=1.5,
-            repetitions_separation_s=0.1,
-            steps_separation_s=0.1,
+            sequence_separation_s=0.1,
+            step_separation_s=0.1,
             do_dry_run=False,
         )
 
@@ -203,19 +203,19 @@ class OctoprintAccelerometerPlugin(octoprint.plugin.StartupPlugin,
     @staticmethod
     def _get_ui_exposed_parameters() -> List[str]:
         return ["distance_x_mm", "distance_y_mm", "distance_z_mm",
-                "repetitions_count",
+                "step_count",
                 "speed_x_mm_s", "speed_y_mm_s", "speed_z_mm_s",
                 "acceleration_x_mm_ss", "acceleration_y_mm_ss", "acceleration_z_mm_ss",
                 "anchor_point_coord_x_mm", "anchor_point_coord_y_mm", "anchor_point_coord_z_mm",
-                "runs_count",
+                "sequence_count",
                 "go_start", "return_start", "auto_home",
                 "frequency_start", "frequency_stop", "frequency_step",
                 "zeta_start", "zeta_stop", "zeta_step",
                 "sensor_output_data_rate_hz",
                 "data_remove_before_run",
                 "do_sample_x", "do_sample_y", "do_sample_z",
-                "recording_timespan_s", "repetitions_separation_s", "steps_separation_s",
-                "devices_seen", "device"]
+                "recording_timespan_s", "sequence_separation_s", "step_separation_s",
+                "devices_seen", "device", "do_dry_run"]
 
     def _update_member_from_str_value(self, parameter: str, value: str):
         if parameter in self._get_ui_exposed_parameters():
@@ -236,7 +236,7 @@ class OctoprintAccelerometerPlugin(octoprint.plugin.StartupPlugin,
         self.distance_x_mm = self._settings.get_int(["distance_x_mm"])
         self.distance_y_mm = self._settings.get_int(["distance_y_mm"])
         self.distance_z_mm = self._settings.get_int(["distance_z_mm"])
-        self.repetitions_count = self._settings.get_int(["repetitions_count"])
+        self.step_count = self._settings.get_int(["step_count"])
         self.speed_x_mm_s = self._settings.get_int(["speed_x_mm_s"])
         self.speed_y_mm_s = self._settings.get_int(["speed_y_mm_s"])
         self.speed_z_mm_s = self._settings.get_int(["speed_z_mm_s"])
@@ -246,7 +246,7 @@ class OctoprintAccelerometerPlugin(octoprint.plugin.StartupPlugin,
         self.anchor_point_coord_x_mm = self._settings.get_int(["anchor_point_coord_x_mm"])
         self.anchor_point_coord_y_mm = self._settings.get_int(["anchor_point_coord_y_mm"])
         self.anchor_point_coord_z_mm = self._settings.get_int(["anchor_point_coord_z_mm"])
-        self.runs_count = self._settings.get_int(["runs_count"])
+        self.sequence_count = self._settings.get_int(["sequence_count"])
         self.go_start = self._settings.get_boolean(["go_start"])
         self.return_start = self._settings.get_boolean(["return_start"])
         self.auto_home = self._settings.get_boolean(["auto_home"])
@@ -262,8 +262,8 @@ class OctoprintAccelerometerPlugin(octoprint.plugin.StartupPlugin,
         self.do_sample_y = self._settings.get_boolean(["do_sample_y"])
         self.do_sample_z = self._settings.get_boolean(["do_sample_z"])
         self.recording_timespan_s = self._settings.get_float(["recording_timespan_s"])
-        self.repetitions_separation_s = self._settings.get_float(["repetitions_separation_s"])
-        self.steps_separation_s = self._settings.get_float(["steps_separation_s"])
+        self.sequence_separation_s = self._settings.get_float(["sequence_separation_s"])
+        self.step_separation_s = self._settings.get_float(["step_separation_s"])
         self.do_dry_run = self._settings.get_float(["do_dry_run"])
 
         self._compute_start_points()
@@ -281,8 +281,8 @@ class OctoprintAccelerometerPlugin(octoprint.plugin.StartupPlugin,
 
     def _estimate_duration(self, _args: Dict[str, str] = None) -> float:
         axs: List[Literal["x", "y", "z"]] = [ax for ax, enabled in [("x", self.do_sample_x), ("y", self.do_sample_y), ("z", self.do_sample_z)] if enabled]
-        steps = RunArgsGenerator(
-            runs=self.runs_count,
+        sequences_count = len(RunArgsGenerator(
+            sequence_repeat_count=self.sequence_count,
             fx_start=self.frequency_start,
             fx_stop=self.frequency_stop,
             fx_step=self.frequency_step,
@@ -290,8 +290,11 @@ class OctoprintAccelerometerPlugin(octoprint.plugin.StartupPlugin,
             zeta_stop=self.zeta_stop,
             zeta_step=self.zeta_step,
             axis=axs,
-            file_prefix="").generate()
-        duration_s = len(steps) * (self.recording_timespan_s + self.repetitions_separation_s + self.steps_separation_s) * self.runs_count
+            out_file_prefix="").generate())
+
+        duration_s = (sequences_count * self.recording_timespan_s +
+                      (sequences_count - 1) * self.sequence_separation_s +
+                      (self.step_count - 1) * sequences_count * self.step_separation_s)
         return duration_s
 
     def _get_parameter_dict(self, args: Dict[str, str] = None) -> Dict[str, str]:
@@ -312,10 +315,8 @@ class OctoprintAccelerometerPlugin(octoprint.plugin.StartupPlugin,
         return params_dict
 
     def _get_selected_axis_str(self) -> List[Literal["x", "y", "z"]]:
-        return convert_axis_from_str(""
-                                     + "x" if self.do_sample_x else ""
-                                                                    + "y" if self.do_sample_y else ""
-                                                                                                   + "z" if self.do_sample_z else "")
+        return convert_axis_from_str(
+            "" + "x" if self.do_sample_x else "" + "y" if self.do_sample_y else "" + "z" if self.do_sample_z else "")
 
     def _construct_new_step_series_runner(self) -> RecordStepSeriesRunner:
         return RecordStepSeriesRunner(
@@ -328,8 +329,8 @@ class OctoprintAccelerometerPlugin(octoprint.plugin.StartupPlugin,
             gcode_start_point_mm=(self.anchor_point_coord_x_mm, self.anchor_point_coord_y_mm, self.anchor_point_coord_z_mm),
             gcode_axis=self._get_selected_axis_str(),
             gcode_distance_mm=self.distance_x_mm,
-            gcode_repetitions_count=self.repetitions_count,
-            gcode_series_count=self.runs_count,
+            gcode_step_count=self.step_count,
+            gcode_sequence_count=self.sequence_count,
             frequency_start=self.frequency_start,
             frequency_stop=self.frequency_stop,
             frequency_step=self.frequency_step,
@@ -356,8 +357,8 @@ class OctoprintAccelerometerPlugin(octoprint.plugin.StartupPlugin,
         self.runner.zeta_stop = self.zeta_stop
         self.runner.zeta_step = self.zeta_step
 
-        self.runner.gcode_repetitions_count = self.repetitions_count
-        self.runner.gcode_series_count = self.runs_count
+        self.runner.gcode_step_count = self.step_count
+        self.runner.gcode_sequence_count = self.sequence_count
         self.runner.gcode_start_point_mm = (self.anchor_point_coord_x_mm, self.anchor_point_coord_y_mm, self.anchor_point_coord_z_mm)
         self.runner.gcode_axis = self._get_selected_axis_str()
         self.runner.gcode_distance_mm = self.distance_x_mm  # todo: x y z distances

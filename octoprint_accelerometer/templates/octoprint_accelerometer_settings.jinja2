@@ -86,10 +86,10 @@
 
         <div class="controls">
             <label class="number">
-                <input type="number" class="input-mini text-right" min="1" max="10" data-bind="value: settings_view_model.settings.plugins.octoprint_accelerometer.repetitions_count">
-                <span class="help-inline">{{_('times')}}</span>
+                <input type="number" class="input-mini text-right" min="1" max="10" data-bind="value: settings_view_model.settings.plugins.octoprint_accelerometer.step_count">
+                <span class="help-inline">{{_('steps')}}</span>
                 <span class="help-block">
-                    {{_('<code>times</code> how often to repeat back and forth movement before one step is finished')}}
+                    {{_('repeats the travel pattern <code>step</code>-times within one record')}}
                 </span>
             </label>
         </div>
@@ -132,7 +132,8 @@
         <h5>Input Shaping</h5>
 
         <span class="help-block">
-            {{_('Start, stop and increment step for input shaping.
+            {{_('Start, stop and increment for input shaping.
+                  For each step in frequency and Zeta range the configured amount of travel patterns is executed.
                   To disable stepping through <code>frequency</code> and <code>zeta</code> ranges,
                   set <code>start=stop</code>.
                   Requires Marlin <code>INPUT_SHAPING_[XY]</code>, see')}}
@@ -160,8 +161,8 @@
                     </div>
                     <div class="span2">
                         <span class="muted">{{_('Steps: ')}}</span>
-                        <span class="muted" data-bind="text: ui_frequency_steps_total_count() < 0 ? '&#9888;' : ''"></span>
-                        <span class="muted" data-bind="text: ui_frequency_steps_total_count"></span>
+                        <span class="muted" data-bind="text: ui_frequency_step_total_count() < 0 ? '&#9888;' : ''"></span>
+                        <span class="muted" data-bind="text: ui_frequency_step_total_count"></span>
                     </div>
                 </div>
             </div>
@@ -196,8 +197,8 @@
                     </div>
                     <div class="span2">
                         <span class="muted">{{_('Steps: ')}}</span>
-                        <span class="muted" data-bind="text: ui_zeta_steps_total_count() < 0 ? '&#9888;' : ''"></span>
-                        <span class="muted" data-bind="text: ui_zeta_steps_total_count"></span>
+                        <span class="muted" data-bind="text: ui_zeta_step_total_count() < 0 ? '&#9888;' : ''"></span>
+                        <span class="muted" data-bind="text: ui_zeta_step_total_count"></span>
                     </div>
                 </div>
                 <div class="row-fluid">
@@ -207,18 +208,18 @@
                 </div>
             </div>
             <span class="help-block">
-                {{_('Start, stop <code>zeta</code> and increment step. The parameter is scaled <code>*100</code>.')}}
+                {{_('Start, stop <code>zeta</code> and increment. The parameter is scaled <code>*100</code>.')}}
             </span>
         </div>
 
-        <h5>Series</h5>
+        <h5>Sequence</h5>
 
         <div class="controls">
             <label class="number">
-                <input type="number" class="input-mini text-right" min="1" max="10" data-bind="value: settings_view_model.settings.plugins.octoprint_accelerometer.runs_count">
-                <span class="help-inline">{{_('rerun')}}</span>
+                <input type="number" class="input-mini text-right" min="1" max="10" data-bind="value: settings_view_model.settings.plugins.octoprint_accelerometer.sequence_count">
+                <span class="help-inline">{{_('sequence')}}</span>
                 <span class="help-block">
-                    {{_('How many <code>series</code> to pass: runs the above configured permutations <code>series</code>-times.')}}
+                    {{_('How many <code>sequence</code>s to pass: runs the above configured permutations <code>sequence</code>-times.')}}
                 </span>
             </label>
         </div>
@@ -242,20 +243,21 @@
         <div class="controls">
             <label class="number">
                 <input type="number" class="input-mini text-right" min="0.1" max="1.0" step="0.1"
-                       data-bind="value: settings_view_model.settings.plugins.octoprint_accelerometer.repetitions_separation_s">
+                       data-bind="value: settings_view_model.settings.plugins.octoprint_accelerometer.step_separation_s">
                 <span class="help-inline">{{ _('[s]')}}</span>
                 <span class="help-block">
-                    {{_('Pause in-between back and forth repetitions')}}
+                    {{_('Pause in-between travel patterns (steps)')}}
                 </span>
             </label>
         </div>
 
         <div class="controls">
             <label class="number">
-                <input type="number" class="input-mini text-right" min="0.1" max="1.0" step="0.1" data-bind="value: settings_view_model.settings.plugins.octoprint_accelerometer.steps_separation_s">
+                <input type="number" class="input-mini text-right" min="0.1" max="1.0" step="0.1"
+                       data-bind="value: settings_view_model.settings.plugins.octoprint_accelerometer.sequence_separation_s">
                 <span class="help-inline">{{ _('[s]')}}</span>
                 <span class="help-block">
-                    {{_('Pause after step is finished until next step is started')}}
+                    {{_('Pause in-between sequences (series of steps')}}
                 </span>
             </label>
         </div>
