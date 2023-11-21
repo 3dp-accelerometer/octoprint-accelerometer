@@ -90,6 +90,14 @@ $(function() {
         self.ui_frequency_step_total_count = ko.observable();
         self.ui_zeta_step_total_count = ko.observable();
 
+        // volatile UI variables that come via onDataUpdaterPluginMessage
+        // callback and do not require loading from the plugin itself;
+        // its okay to loose those values on page reload
+        self.ui_recording_state = ko.observable("");
+        self.ui_data_processing_state = ko.observable("");
+        self.ui_last_recording_duration_str = ko.observable();
+        self.ui_last_data_processing_duration_str = ko.observable();
+
         self.onStartupComplete = function () {
             self.plugin_settings = self.settings.settings.plugins.octoprint_accelerometer;
 
@@ -333,6 +341,17 @@ $(function() {
                 if (devices_seen) { self.ui_devices_seen(devices_seen); } else { self.ui_devices_seen([]); }
                 if (device) { self.ui_device(device); } else { self.ui_device("-"); }
             }
+        };
+
+        self.onDataUpdaterPluginMessage = function (plugin, data) {
+            console.log(plugin);
+            console.log(data);
+
+            if (plugin !== PLUGIN_NAME) { return; }
+			if ("RecordingEventType" in data) { self.ui_recording_state(data["RecordingEventType"]) }
+			if ("DataProcessingEventType" in data) { self.ui_data_processing_state(data["DataProcessingEventType"]) }
+			if ("LAST_RECORDING_DURATION_S" in data) { self.ui_last_recording_duration_str(secondsToReadableString(data["LAST_RECORDING_DURATION_S"])) }
+			if ("LAST_DATA_PROCESSING_DURATION_S" in data) { self.ui_last_data_processing_duration_str(secondsToReadableString(data["LAST_DATA_PROCESSING_DURATION_S"])) }
         };
 
     };

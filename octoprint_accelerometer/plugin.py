@@ -1,4 +1,4 @@
-from typing import Any, Dict, List, Literal, Callable, Optional
+from typing import Any, Dict, List, Literal, Callable, Optional, Tuple
 
 import flask
 import octoprint.plugin
@@ -7,6 +7,7 @@ from py3dpaxxel.cli.args import convert_axis_from_str
 from py3dpaxxel.controller.api import Py3dpAxxel
 from py3dpaxxel.sampling_tasks.series_argument_generator import RunArgsGenerator
 
+from octoprint_accelerometer.event_types import DataProcessingEventType, RecordingEventType
 from octoprint_accelerometer.record_step_series import RecordStepSeriesRunner
 
 
@@ -80,13 +81,19 @@ class OctoprintAccelerometerPlugin(octoprint.plugin.StartupPlugin,
         self.runner: Optional[RecordStepSeriesRunner] = None
 
     @staticmethod
-    def get_devices() -> List[str]:
-        return [k for k in Py3dpAxxel.get_devices_dict().keys()]
+    def _get_devices() -> Tuple[str, List[str]]:
+        """
+        :return: tuple of primary device (if any) and list of all devices
+        """
+        seen_devices: List[str] = [k for k in Py3dpAxxel.get_devices_dict().keys()]
+        primary: str = seen_devices[0] if len(seen_devices) > 0 else None
+        return primary, seen_devices
 
-    @staticmethod
-    def choose_device() -> str:
-        devices = OctoprintAccelerometerPlugin.get_devices()
-        return devices[0] if len(devices) > 0 else ""
+    def _update_seen_devices(self):
+        primary, seen_devices = self._get_devices()
+        self._logger.debug(f"seen devices: primary={primary}, seen={seen_devices}")
+        self.devices_seen = seen_devices
+        self.device = primary if primary is not None else ""
 
     def get_api_commands(self):
         return dict(
@@ -175,8 +182,7 @@ class OctoprintAccelerometerPlugin(octoprint.plugin.StartupPlugin,
 
     def on_after_startup(self):
         self._update_members_from_settings()
-        self.devices_seen = self.get_devices()
-        self.device = self.choose_device()
+        self._update_seen_devices()
         self.runner = self._construct_new_step_series_runner()
 
     def get_assets(self):
@@ -264,7 +270,7 @@ class OctoprintAccelerometerPlugin(octoprint.plugin.StartupPlugin,
         self.recording_timespan_s = self._settings.get_float(["recording_timespan_s"])
         self.sequence_separation_s = self._settings.get_float(["sequence_separation_s"])
         self.step_separation_s = self._settings.get_float(["step_separation_s"])
-        self.do_dry_run = self._settings.get_float(["do_dry_run"])
+        self.do_dry_run = self._settings.get_boolean(["do_dry_run"])
 
         self._compute_start_points()
 
@@ -323,8 +329,9 @@ class OctoprintAccelerometerPlugin(octoprint.plugin.StartupPlugin,
             logger=self._logger,
             printer=self._printer,
             controller_serial_device=self.device,
+            on_event_callback=self.on_recording_callback,
             controller_record_timelapse_s=self.recording_timespan_s,
-            controller_decode_timeout_s=10.0,  # todo: either configurable or pull out from here
+            controller_decode_timeout_s=3.0,
             sensor_odr_hz=self.sensor_output_data_rate_hz,
             gcode_start_point_mm=(self.anchor_point_coord_x_mm, self.anchor_point_coord_y_mm, self.anchor_point_coord_z_mm),
             gcode_axis=self._get_selected_axis_str(),
@@ -341,7 +348,29 @@ class OctoprintAccelerometerPlugin(octoprint.plugin.StartupPlugin,
             output_dir=self.get_plugin_data_folder(),
             do_dry_run=self.do_dry_run)
 
+    def _push_data_to_ui(self, data: Dict[str, str]):
+        self._plugin_manager.send_plugin_message(self._identifier, data)
+
+    def _push_recording_event_to_ui(self, event: RecordingEventType):
+        self._push_data_to_ui({RecordingEventType.__name__: event.name})
+
+    def _push_data_processing_event_to_ui(self, event: DataProcessingEventType):
+        self._push_data_to_ui({DataProcessingEventType.__name__: event.name})
+
+    def on_recording_callback(self, event: RecordingEventType):
+        self._push_recording_event_to_ui(event)
+        if RecordingEventType.PROCESSING_FINISHED == event:
+            last_run_duration_s = self.runner.get_last_run_duration_s()
+            if last_run_duration_s:
+                self._push_data_to_ui({"LAST_RECORDING_DURATION_S": f"{last_run_duration_s}"})
+
+    def on_data_processing_callback(self, event: DataProcessingEventType):
+        self._push_data_processing_event_to_ui(event)
+
     def _start_recording(self):
+        self._push_recording_event_to_ui(RecordingEventType.STARTING)
+
+        self._update_seen_devices()
         self.runner.controller_serial_device = self.device
         self.runner.controller_record_timelapse_s = self.recording_timespan_s
         self.runner.sensor_odr_hz = self.sensor_output_data_rate_hz
@@ -370,10 +399,12 @@ class OctoprintAccelerometerPlugin(octoprint.plugin.StartupPlugin,
         else:
             self._logger.warning("requested start recording but recording task is still running")
 
-        # todo: receive thread event on finished
-
     def _abort_recording(self):
-        self._logger.info("xxx abort recording stub ...")
+        self.runner.stop()
 
     def _start_data_processing(self):
-        self._logger.info("xxx start data processing stub ...")
+        self._push_data_processing_event_to_ui(DataProcessingEventType.STARTING)
+        # todo
+        self._push_data_processing_event_to_ui(DataProcessingEventType.PROCESSING)
+        # todo
+        self._push_data_processing_event_to_ui(DataProcessingEventType.PROCESSING_FINISHED)

@@ -190,13 +190,35 @@
         <span class="muted" data-bind="text: ui_estimated_recording_duration_text() === '' ? '&#9888;' : ui_estimated_recording_duration_text"></span>
     </div>
 
-    <button type="button" class="btn btn-danger pull-right span2" data-bind="click: abortRecording">Abort</button>
-    <button type="button" class="btn btn-primary pull-right span2" data-bind="click: startRecording, enable: (ui_estimated_recording_duration_text() !== '') && printer_state.isOperational()">Start
+    <button type="button" class="btn btn-danger pull-right span2" data-bind="click: abortRecording">
+        Abort
     </button>
+    <button type="button" class="btn btn-primary pull-right span2" data-bind="click: startRecording, enable: (ui_estimated_recording_duration_text() !== '') && printer_state.isOperational()">
+        Start
+    </button>
+    <br/>
+    <span class="muted" data-bind="text: ui_recording_state() === 'STARTING' ? 'Start recording...' :
+                                         ui_recording_state() === 'PROCESSING' ? 'Recording...' :
+                                         ui_recording_state() === 'PROCESSING_FINISHED' ? 'Recording finished in ' + ui_last_recording_duration_str() :
+                                         ui_recording_state() === 'FIFO_OVERRUN' ? '&#9888; FiFO overrun detected, reduce output data rate' :
+                                         ui_recording_state() === 'UNHANDLED_EXCEPTION' ? '&#9888; Unhandled exception, see logs' :
+                                         ui_recording_state() === 'ABORTING' ? '&#9888; Aborting task...' :
+                                         ui_recording_state() === 'ABORTED' ? '&#9888; Task aborted' :
+                                         ''"></span>
     <br/>
     <hr/>
 
     <div class="control-group">
         <h4>Data Visualisation - TODO</h4>
     </div>
+    <br/>
+    <span class="muted" data-bind="text: ui_data_processing_state() === 'STARTING' ? 'Start processing...' :
+                                         ui_data_processing_state() === 'PROCESSING' ? 'Processing...' :
+                                         ui_data_processing_state() === 'PROCESSING_FINISHED' ? 'Processing finished in ' + ui_last_data_processing_duration_str() :
+                                         ui_data_processing_state() === 'UNHANDLED_EXCEPTION' ? '&#9888; Unhandled exception, see logs' :
+                                         ui_data_processing_state() === 'ABORTING' ? '&#9888; Aborting task...' :
+                                         ui_data_processing_state() === 'ABORTED' ? '&#9888; Task aborted' :
+                                         ''"></span>
+    <br/>
+
 </form>
