@@ -5,6 +5,7 @@ import octoprint.plugin
 from octoprint.server.util.flask import OctoPrintFlaskRequest
 from py3dpaxxel.cli.args import convert_axis_from_str
 from py3dpaxxel.controller.api import Py3dpAxxel
+from py3dpaxxel.data_decomposition.decompose_runner import DataDecomposeRunner
 from py3dpaxxel.sampling_tasks.series_argument_generator import RunArgsGenerator
 
 from octoprint_accelerometer.event_types import DataProcessingEventType, RecordingEventType
@@ -48,12 +49,12 @@ class OctoprintAccelerometerPlugin(octoprint.plugin.StartupPlugin,
         self.go_start: bool = False
         self.return_start: bool = False
         self.auto_home: bool = False
-        self.frequency_start: int = 0
-        self.frequency_stop: int = 0
-        self.frequency_step: int = 0
-        self.zeta_start: int = 0
-        self.zeta_stop: int = 0
-        self.zeta_step: int = 0
+        self.start_frequency_hz: int = 0
+        self.stop_frequency_hz: int = 0
+        self.step_frequency_hz: int = 0
+        self.start_zeta_em2: int = 0
+        self.stop_zeta_em2: int = 0
+        self.step_zeta_em2: int = 0
         self.sensor_output_data_rate_hz: int = 0
         self.data_remove_before_run: bool = False
         self.do_sample_x: bool = False
@@ -159,12 +160,12 @@ class OctoprintAccelerometerPlugin(octoprint.plugin.StartupPlugin,
             go_start=True,
             return_start=True,
             auto_home=True,
-            frequency_start=10,
-            frequency_stop=60,
-            frequency_step=10,
-            zeta_start=15,
-            zeta_stop=15,
-            zeta_step=5,
+            start_frequency_hz=10,
+            stop_frequency_hz=60,
+            step_frequency_hz=10,
+            start_zeta_em2=15,
+            stop_zeta_em2=15,
+            step_zeta_em2=5,
             sensor_output_data_rate_hz=800,
             data_remove_before_run=True,
             do_sample_x=True,
@@ -215,8 +216,8 @@ class OctoprintAccelerometerPlugin(octoprint.plugin.StartupPlugin,
                 "anchor_point_coord_x_mm", "anchor_point_coord_y_mm", "anchor_point_coord_z_mm",
                 "sequence_count",
                 "go_start", "return_start", "auto_home",
-                "frequency_start", "frequency_stop", "frequency_step",
-                "zeta_start", "zeta_stop", "zeta_step",
+                "start_frequency_hz", "stop_frequency_hz", "step_frequency_hz",
+                "start_zeta_em2", "stop_zeta_em2", "step_zeta_em2",
                 "sensor_output_data_rate_hz",
                 "data_remove_before_run",
                 "do_sample_x", "do_sample_y", "do_sample_z",
@@ -256,12 +257,12 @@ class OctoprintAccelerometerPlugin(octoprint.plugin.StartupPlugin,
         self.go_start = self._settings.get_boolean(["go_start"])
         self.return_start = self._settings.get_boolean(["return_start"])
         self.auto_home = self._settings.get_boolean(["auto_home"])
-        self.frequency_start = self._settings.get_int(["frequency_start"])
-        self.frequency_stop = self._settings.get_int(["frequency_stop"])
-        self.frequency_step = self._settings.get_int(["frequency_step"])
-        self.zeta_start = self._settings.get_int(["zeta_start"])
-        self.zeta_stop = self._settings.get_int(["zeta_stop"])
-        self.zeta_step = self._settings.get_int(["zeta_step"])
+        self.start_frequency_hz = self._settings.get_int(["start_frequency_hz"])
+        self.stop_frequency_hz = self._settings.get_int(["stop_frequency_hz"])
+        self.step_frequency_hz = self._settings.get_int(["step_frequency_hz"])
+        self.start_zeta_em2 = self._settings.get_int(["start_zeta_em2"])
+        self.stop_zeta_em2 = self._settings.get_int(["stop_zeta_em2"])
+        self.step_zeta_em2 = self._settings.get_int(["step_zeta_em2"])
         self.sensor_output_data_rate_hz = self._settings.get_int(["sensor_output_data_rate_hz"])
         self.data_remove_before_run = self._settings.get_boolean(["data_remove_before_run"])
         self.do_sample_x = self._settings.get_boolean(["do_sample_x"])
@@ -289,14 +290,14 @@ class OctoprintAccelerometerPlugin(octoprint.plugin.StartupPlugin,
         axs: List[Literal["x", "y", "z"]] = [ax for ax, enabled in [("x", self.do_sample_x), ("y", self.do_sample_y), ("z", self.do_sample_z)] if enabled]
         sequences_count = len(RunArgsGenerator(
             sequence_repeat_count=self.sequence_count,
-            fx_start=self.frequency_start,
-            fx_stop=self.frequency_stop,
-            fx_step=self.frequency_step,
-            zeta_start=self.zeta_start,
-            zeta_stop=self.zeta_stop,
-            zeta_step=self.zeta_step,
+            fx_start_hz=self.start_frequency_hz,
+            fx_stop_hz=self.stop_frequency_hz,
+            fx_step_hz=self.step_frequency_hz,
+            zeta_start_em2=self.start_zeta_em2,
+            zeta_stop_em2=self.stop_zeta_em2,
+            zeta_step_em2=self.step_zeta_em2,
             axis=axs,
-            out_file_prefix="").generate())
+            out_file_prefix="", out_file_prefix_2="").generate())
 
         duration_s = (sequences_count * self.recording_timespan_s +
                       (sequences_count - 1) * self.sequence_separation_s +
@@ -338,12 +339,12 @@ class OctoprintAccelerometerPlugin(octoprint.plugin.StartupPlugin,
             gcode_distance_mm=self.distance_x_mm,
             gcode_step_count=self.step_count,
             gcode_sequence_count=self.sequence_count,
-            frequency_start=self.frequency_start,
-            frequency_stop=self.frequency_stop,
-            frequency_step=self.frequency_step,
-            zeta_start=self.zeta_start,
-            zeta_stop=self.zeta_stop,
-            zeta_step=self.zeta_step,
+            start_frequency_hz=self.start_frequency_hz,
+            stop_frequency_hz=self.stop_frequency_hz,
+            step_frequency_hz=self.step_frequency_hz,
+            start_zeta_em2=self.start_zeta_em2,
+            stop_zeta_em2=self.stop_zeta_em2,
+            step_zeta_em2=self.step_zeta_em2,
             output_file_prefix=self.OUTPUT_FILE_NAME_PREFIX,
             output_dir=self.get_plugin_data_folder(),
             do_dry_run=self.do_dry_run)
@@ -378,13 +379,13 @@ class OctoprintAccelerometerPlugin(octoprint.plugin.StartupPlugin,
         # todo acceleration
         # todo speed
 
-        self.runner.frequency_start = self.frequency_start
-        self.runner.frequency_stop = self.frequency_stop
-        self.runner.frequency_step = self.frequency_step
+        self.runner.start_frequency_hz = self.start_frequency_hz
+        self.runner.stop_frequency_hz = self.stop_frequency_hz
+        self.runner.step_frequency_hz = self.step_frequency_hz
 
-        self.runner.zeta_start = self.zeta_start
-        self.runner.zeta_stop = self.zeta_stop
-        self.runner.zeta_step = self.zeta_step
+        self.runner.start_zeta_em2 = self.start_zeta_em2
+        self.runner.stop_zeta_em2 = self.stop_zeta_em2
+        self.runner.step_zeta_em2 = self.step_zeta_em2
 
         self.runner.gcode_step_count = self.step_count
         self.runner.gcode_sequence_count = self.sequence_count
@@ -404,7 +405,14 @@ class OctoprintAccelerometerPlugin(octoprint.plugin.StartupPlugin,
 
     def _start_data_processing(self):
         self._push_data_processing_event_to_ui(DataProcessingEventType.STARTING)
-        # todo
+        runner = DataDecomposeRunner(
+            command="algo",
+            input_dir=self.get_plugin_data_folder(),
+            input_file_prefix="axxel",
+            algorithm_d1="discrete_blackman",
+            output_dir=self.get_plugin_data_folder(),
+            output_file_prefix="fft",
+            output_overwrite=False)
         self._push_data_processing_event_to_ui(DataProcessingEventType.PROCESSING)
-        # todo
+        runner.run()
         self._push_data_processing_event_to_ui(DataProcessingEventType.PROCESSING_FINISHED)

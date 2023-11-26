@@ -66,12 +66,12 @@ $(function() {
         self.ui_acceleration_x_mm_ss = ko.observable();
         self.ui_acceleration_y_mm_ss = ko.observable();
         self.ui_acceleration_z_mm_ss = ko.observable();
-        self.ui_frequency_start = ko.observable();
-        self.ui_frequency_stop = ko.observable();
-        self.ui_frequency_step = ko.observable();
-        self.ui_zeta_start = ko.observable();
-        self.ui_zeta_stop = ko.observable();
-        self.ui_zeta_step = ko.observable();
+        self.ui_start_frequency_hz = ko.observable();
+        self.ui_stop_frequency_hz = ko.observable();
+        self.ui_step_frequency_hz = ko.observable();
+        self.ui_start_zeta_em2 = ko.observable();
+        self.ui_stop_zeta_em2 = ko.observable();
+        self.ui_step_zeta_em2 = ko.observable();
         self.ui_recording_timespan_s = ko.observable();
         self.ui_sequence_separation_s = ko.observable();
         self.ui_step_separation_s = ko.observable();
@@ -87,8 +87,8 @@ $(function() {
         self.ui_device = ko.observable();
 
         // variables shared with UI
-        self.ui_frequency_step_total_count = ko.observable();
-        self.ui_zeta_step_total_count = ko.observable();
+        self.ui_frequency_hz_step_total_count = ko.observable();
+        self.ui_zeta_em2_step_total_count = ko.observable();
 
         // volatile UI variables that come via onDataUpdaterPluginMessage
         // callback and do not require loading from the plugin itself;
@@ -118,12 +118,12 @@ $(function() {
                 [self.plugin_settings.acceleration_x_mm_ss, "acceleration_x_mm_ss", self.ui_acceleration_x_mm_ss],
                 [self.plugin_settings.acceleration_y_mm_ss, "acceleration_y_mm_ss", self.ui_acceleration_y_mm_ss],
                 [self.plugin_settings.acceleration_z_mm_ss, "acceleration_z_mm_ss", self.ui_acceleration_z_mm_ss],
-                [self.plugin_settings.frequency_start, "frequency_start", self.ui_frequency_start],
-                [self.plugin_settings.frequency_stop, "frequency_stop", self.ui_frequency_stop],
-                [self.plugin_settings.frequency_step, "frequency_step", self.ui_frequency_step],
-                [self.plugin_settings.zeta_start, "zeta_start", self.ui_zeta_start],
-                [self.plugin_settings.zeta_stop, "zeta_stop", self.ui_zeta_stop],
-                [self.plugin_settings.zeta_step, "zeta_step", self.ui_zeta_step],
+                [self.plugin_settings.start_frequency_hz, "start_frequency_hz", self.ui_start_frequency_hz],
+                [self.plugin_settings.stop_frequency_hz, "stop_frequency_hz", self.ui_stop_frequency_hz],
+                [self.plugin_settings.step_frequency_hz, "step_frequency_hz", self.ui_step_frequency_hz],
+                [self.plugin_settings.start_zeta_em2, "start_zeta_em2", self.ui_start_zeta_em2],
+                [self.plugin_settings.stop_zeta_em2, "stop_zeta_em2", self.ui_stop_zeta_em2],
+                [self.plugin_settings.step_zeta_em2, "step_zeta_em2", self.ui_step_zeta_em2],
                 [self.plugin_settings.recording_timespan_s, "recording_timespan_s", self.ui_recording_timespan_s],
                 [self.plugin_settings.sequence_separation_s, "sequence_separation_s", self.ui_sequence_separation_s],
                 [self.plugin_settings.step_separation_s, "step_separation_s", self.ui_step_separation_s],
@@ -165,12 +165,12 @@ $(function() {
                 [self.ui_acceleration_x_mm_ss, "acceleration_x_mm_ss"],
                 [self.ui_acceleration_y_mm_ss, "acceleration_y_mm_ss"],
                 [self.ui_acceleration_z_mm_ss, "acceleration_z_mm_ss"],
-                [self.ui_frequency_start, "frequency_start"],
-                [self.ui_frequency_stop, "frequency_stop"],
-                [self.ui_frequency_step, "frequency_step"],
-                [self.ui_zeta_start, "zeta_start"],
-                [self.ui_zeta_stop, "zeta_stop"],
-                [self.ui_zeta_step, "zeta_step"],
+                [self.ui_start_frequency_hz, "start_frequency_hz"],
+                [self.ui_stop_frequency_hz, "stop_frequency_hz"],
+                [self.ui_step_frequency_hz, "step_frequency_hz"],
+                [self.ui_start_zeta_em2, "start_zeta_em2"],
+                [self.ui_stop_zeta_em2, "stop_zeta_em2"],
+                [self.ui_step_zeta_em2, "step_zeta_em2"],
                 [self.ui_recording_timespan_s, "recording_timespan_s"],
                 [self.ui_sequence_separation_s, "sequence_separation_s"],
                 [self.ui_step_separation_s, "step_separation_s"],
@@ -236,12 +236,12 @@ $(function() {
                  "acceleration_x_mm_ss": function () { return self.ui_acceleration_x_mm_ss(); },
                  "acceleration_y_mm_ss": function () { return self.ui_acceleration_y_mm_ss(); },
                  "acceleration_z_mm_ss": function () { return self.ui_acceleration_z_mm_ss(); },
-                 "frequency_start": function () { return self.ui_frequency_start(); },
-                 "frequency_stop": function () { return self.ui_frequency_stop(); },
-                 "frequency_step": function () { return self.ui_frequency_step(); },
-                 "zeta_start": function () { return self.ui_zeta_start(); },
-                 "zeta_stop": function () { return self.ui_zeta_stop(); },
-                 "zeta_step": function () { return self.ui_zeta_step(); },
+                 "start_frequency_hz": function () { return self.ui_start_frequency_hz(); },
+                 "stop_frequency_hz": function () { return self.ui_stop_frequency_hz(); },
+                 "step_frequency_hz": function () { return self.ui_step_frequency_hz(); },
+                 "start_zeta_em2": function () { return self.ui_start_zeta_em2(); },
+                 "stop_zeta_em2": function () { return self.ui_stop_zeta_em2(); },
+                 "step_zeta_em2": function () { return self.ui_step_zeta_em2(); },
                  "recording_timespan_s": function () { return self.ui_recording_timespan_s(); },
                  "sequence_separation_s": function () { return self.ui_sequence_separation_s(); },
                  "step_separation_s": function () { return self.ui_step_separation_s(); },
@@ -269,10 +269,10 @@ $(function() {
         self.requestAllParameters = function () { pluginGetAllParameters().done(self.updateUiFromGetResponse); };
 
         self.updateUiFromGetResponse = function (response) {
-            self.ui_frequency_step_total_count(
-                effectiveSteps(self.ui_frequency_start(), self.ui_frequency_stop(), self.ui_frequency_step()));
-            self.ui_zeta_step_total_count(
-                effectiveSteps(self.ui_zeta_start(), self.ui_zeta_stop(), self.ui_zeta_step()));
+            self.ui_frequency_hz_step_total_count(
+                effectiveSteps(self.ui_start_frequency_hz(), self.ui_stop_frequency_hz(), self.ui_step_frequency_hz()));
+            self.ui_zeta_em2_step_total_count(
+                effectiveSteps(self.ui_start_zeta_em2(), self.ui_stop_zeta_em2(), self.ui_step_zeta_em2()));
 
             if (Object.hasOwn(response, "estimate")) {
                 self.ui_estimated_recording_duration_text(secondsToReadableString(response.estimate));
@@ -293,12 +293,12 @@ $(function() {
                 let acceleration_x_mm_ss = response.parameters.acceleration_x_mm_ss;
                 let acceleration_y_mm_ss = response.parameters.acceleration_y_mm_ss;
                 let acceleration_z_mm_ss = response.parameters.acceleration_z_mm_ss;
-                let frequency_start = response.parameters.frequency_start;
-                let frequency_stop = response.parameters.frequency_stop;
-                let frequency_step = response.parameters.frequency_step;
-                let zeta_start = response.parameters.zeta_start;
-                let zeta_stop = response.parameters.zeta_stop;
-                let zeta_step = response.parameters.zeta_step;
+                let start_frequency_hz = response.parameters.start_frequency_hz;
+                let stop_frequency_hz = response.parameters.stop_frequency_hz;
+                let step_frequency_hz = response.parameters.step_frequency_hz;
+                let start_zeta_em2 = response.parameters.start_zeta_em2;
+                let stop_zeta_em2 = response.parameters.stop_zeta_em2;
+                let step_zeta_em2 = response.parameters.step_zeta_em2;
                 let recording_timespan_s = response.parameters.recording_timespan_s;
                 let sequence_separation_s = response.parameters.sequence_separation_s;
                 let step_separation_s = response.parameters.step_separation_s;
@@ -324,12 +324,12 @@ $(function() {
                 if (acceleration_x_mm_ss) { self.ui_acceleration_x_mm_ss(acceleration_x_mm_ss); }
                 if (acceleration_y_mm_ss) { self.ui_acceleration_y_mm_ss(acceleration_y_mm_ss); }
                 if (acceleration_z_mm_ss) { self.ui_acceleration_z_mm_ss(acceleration_z_mm_ss); }
-                if (frequency_start) { self.ui_frequency_start(frequency_start); }
-                if (frequency_stop) { self.ui_frequency_stop(frequency_stop); }
-                if (frequency_step) { self.ui_frequency_step(frequency_step); }
-                if (zeta_start) { self.ui_zeta_start(zeta_start); }
-                if (zeta_stop) { self.ui_zeta_stop(zeta_stop); }
-                if (zeta_step) { self.ui_zeta_step(zeta_step); }
+                if (start_frequency_hz) { self.ui_start_frequency_hz(start_frequency_hz); }
+                if (stop_frequency_hz) { self.ui_stop_frequency_hz(stop_frequency_hz); }
+                if (step_frequency_hz) { self.ui_step_frequency_hz(step_frequency_hz); }
+                if (start_zeta_em2) { self.ui_start_zeta_em2(start_zeta_em2); }
+                if (stop_zeta_em2) { self.ui_stop_zeta_em2(stop_zeta_em2); }
+                if (step_zeta_em2) { self.ui_step_zeta_em2(step_zeta_em2); }
                 if (recording_timespan_s) { self.ui_recording_timespan_s(recording_timespan_s); }
                 if (sequence_separation_s) { self.ui_sequence_separation_s(sequence_separation_s); }
                 if (step_separation_s) { self.ui_step_separation_s(step_separation_s); }
@@ -363,8 +363,8 @@ $(function() {
 
         self.settings_view_model = parameters[0];
 
-        self.ui_frequency_step_total_count = ko.observable();
-        self.ui_zeta_step_total_count = ko.observable();
+        self.ui_frequency_hz_step_total_count = ko.observable();
+        self.ui_zeta_em2_step_total_count = ko.observable();
         self.ui_estimated_recording_duration_text = ko.observable();
 
         self.requestPluginEstimation = function () { pluginGetEstimate().done(self.updateUiFromGetResponse); };
@@ -377,32 +377,32 @@ $(function() {
 
         self.onStartupComplete = function () {
             let updateFrequencySteps = function () {
-                self.ui_frequency_step_total_count(
+                self.ui_frequency_hz_step_total_count(
                     effectiveSteps(
-                    self.settings_view_model.settings.plugins.octoprint_accelerometer.frequency_start(),
-                    self.settings_view_model.settings.plugins.octoprint_accelerometer.frequency_stop(),
-                    self.settings_view_model.settings.plugins.octoprint_accelerometer.frequency_step()));
+                    self.settings_view_model.settings.plugins.octoprint_accelerometer.start_frequency_hz(),
+                    self.settings_view_model.settings.plugins.octoprint_accelerometer.stop_frequency_hz(),
+                    self.settings_view_model.settings.plugins.octoprint_accelerometer.step_frequency_hz()));
             };
 
             let updateZetaSteps = function () {
-                self.ui_zeta_step_total_count(
+                self.ui_zeta_em2_step_total_count(
                     effectiveSteps(
-                        self.settings_view_model.settings.plugins.octoprint_accelerometer.zeta_start(),
-                        self.settings_view_model.settings.plugins.octoprint_accelerometer.zeta_stop(),
-                        self.settings_view_model.settings.plugins.octoprint_accelerometer.zeta_step()));
+                        self.settings_view_model.settings.plugins.octoprint_accelerometer.start_zeta_em2(),
+                        self.settings_view_model.settings.plugins.octoprint_accelerometer.stop_zeta_em2(),
+                        self.settings_view_model.settings.plugins.octoprint_accelerometer.step_zeta_em2()));
             };
 
-            self.settings_view_model.settings.plugins.octoprint_accelerometer.frequency_start.subscribe(
+            self.settings_view_model.settings.plugins.octoprint_accelerometer.start_frequency_hz.subscribe(
                 function() { updateFrequencySteps(); self.requestPluginEstimation(); });
-            self.settings_view_model.settings.plugins.octoprint_accelerometer.frequency_stop.subscribe(
+            self.settings_view_model.settings.plugins.octoprint_accelerometer.stop_frequency_hz.subscribe(
                 function() { updateFrequencySteps(); self.requestPluginEstimation(); });
-            self.settings_view_model.settings.plugins.octoprint_accelerometer.frequency_step.subscribe(
+            self.settings_view_model.settings.plugins.octoprint_accelerometer.step_frequency_hz.subscribe(
                 function() { updateFrequencySteps(); self.requestPluginEstimation(); });
-            self.settings_view_model.settings.plugins.octoprint_accelerometer.zeta_start.subscribe(
+            self.settings_view_model.settings.plugins.octoprint_accelerometer.start_zeta_em2.subscribe(
                 function() { updateZetaSteps(); self.requestPluginEstimation(); });
-            self.settings_view_model.settings.plugins.octoprint_accelerometer.zeta_stop.subscribe(
+            self.settings_view_model.settings.plugins.octoprint_accelerometer.stop_zeta_em2.subscribe(
                 function() { updateZetaSteps(); self.requestPluginEstimation(); });
-            self.settings_view_model.settings.plugins.octoprint_accelerometer.zeta_step.subscribe(
+            self.settings_view_model.settings.plugins.octoprint_accelerometer.step_zeta_em2.subscribe(
                 function() { updateZetaSteps(); self.requestPluginEstimation(); });
 
             self.settings_view_model.settings.plugins.octoprint_accelerometer.do_sample_x.subscribe(self.requestPluginEstimation);

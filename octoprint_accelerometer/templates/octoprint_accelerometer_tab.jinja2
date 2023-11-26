@@ -92,20 +92,20 @@
             <div>
                 <div class="row-fluid">
                     <div class="span2">
-                        <input type="number" class="input-mini text-right" min="0" max="100" data-bind="value: ui_frequency_start">
+                        <input type="number" class="input-mini text-right" min="0" max="100" data-bind="value: ui_start_frequency_hz">
                     </div>
                     <div class="span2">
-                        <input type="number" class="input-mini text-right" min="1" max="100" data-bind="value: ui_frequency_stop">
+                        <input type="number" class="input-mini text-right" min="1" max="100" data-bind="value: ui_stop_frequency_hz">
                     </div>
                     <div class="span2">
-                        <input type="number" class="input-mini text-right" min="1" max="100" data-bind="value: ui_frequency_step">
+                        <input type="number" class="input-mini text-right" min="1" max="100" data-bind="value: ui_step_frequency_hz">
                     </div>
                     <div class="span4">
                         <span class="help-inline">{{_('Input Shaping frequency')}}</span><a href="https://marlinfw.org/docs/gcode/M593.html" target="_blank" rel="noopener noreferrer">{{_('*')}}</a>
                         <br/>
                         <span class="muted">{{_('Steps: ')}}</span>
-                        <span class="muted" data-bind="text: ui_frequency_step_total_count() < 0 ? '&#9888;' : ''"></span>
-                        <span class="muted" data-bind="text: ui_frequency_step_total_count"></span>
+                        <span class="muted" data-bind="text: ui_frequency_hz_step_total_count() < 0 ? '&#9888;' : ''"></span>
+                        <span class="muted" data-bind="text: ui_frequency_hz_step_total_count"></span>
                     </div>
 
                 </div>
@@ -128,20 +128,20 @@
             <div>
                 <div class="row-fluid">
                     <div class="span2">
-                        <input type="number" class="input-mini text-right" min="0" max="100" data-bind="value: ui_zeta_start">
+                        <input type="number" class="input-mini text-right" min="0" max="100" data-bind="value: ui_start_zeta_em2">
                     </div>
                     <div class="span2">
-                        <input type="number" class="input-mini text-right" min="1" max="100" data-bind="value: ui_zeta_stop">
+                        <input type="number" class="input-mini text-right" min="1" max="100" data-bind="value: ui_stop_zeta_em2">
                     </div>
                     <div class="span2">
-                        <input type="number" class="input-mini text-right" min="1" max="100" data-bind="value: ui_zeta_step">
+                        <input type="number" class="input-mini text-right" min="1" max="100" data-bind="value: ui_step_zeta_em2">
                     </div>
                     <div class="span4">
                         <span class="help-inline">{{_('Input Shaping Zeta')}}</span><a href="https://marlinfw.org/docs/gcode/M593.html" target="_blank" rel="noopener noreferrer">{{_('*')}}</a>
                         <br/>
                         <span class="muted">{{_('Steps: ')}}</span>
-                        <span class="muted" data-bind="text: ui_zeta_step_total_count() < 0 ? '&#9888;' : ''"></span>
-                        <span class="muted" data-bind="text: ui_zeta_step_total_count"></span>
+                        <span class="muted" data-bind="text: ui_zeta_em2_step_total_count() < 0 ? '&#9888;' : ''"></span>
+                        <span class="muted" data-bind="text: ui_zeta_em2_step_total_count"></span>
                     </div>
                 </div>
                 <div class="row-fluid">

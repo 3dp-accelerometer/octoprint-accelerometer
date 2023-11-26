@@ -88,12 +88,12 @@ class RecordStepSeriesRunner:
                  gcode_distance_mm: int,
                  gcode_step_count: int,
                  gcode_sequence_count: int,
-                 frequency_start: int,
-                 frequency_stop: int,
-                 frequency_step: int,
-                 zeta_start: int,
-                 zeta_stop: int,
-                 zeta_step: int,
+                 start_frequency_hz: int,
+                 stop_frequency_hz: int,
+                 step_frequency_hz: int,
+                 start_zeta_em2: int,
+                 stop_zeta_em2: int,
+                 step_zeta_em2: int,
                  output_file_prefix: str,
                  output_dir: str,
                  do_dry_run: bool,
@@ -113,12 +113,12 @@ class RecordStepSeriesRunner:
         self._gcode_distance_mm: int = gcode_distance_mm
         self._gcode_step_count: int = gcode_step_count
         self._gcode_sequence_count: int = gcode_sequence_count
-        self._frequency_start: int = frequency_start
-        self._frequency_stop: int = frequency_stop
-        self._frequency_step: int = frequency_step
-        self._zeta_start: int = zeta_start
-        self._zeta_stop: int = zeta_stop
-        self._zeta_step: int = zeta_step
+        self._start_frequency_hz: int = start_frequency_hz
+        self._stop_frequency_hz: int = stop_frequency_hz
+        self._step_frequency_hz: int = step_frequency_hz
+        self._start_zeta_em2: int = start_zeta_em2
+        self._stop_zeta_em2: int = stop_zeta_em2
+        self._step_zeta_em2: int = step_zeta_em2
         self._output_file_prefix: str = output_file_prefix
         self._output_dir: str = output_dir
         self._do_dry_run: bool = do_dry_run
@@ -200,52 +200,52 @@ class RecordStepSeriesRunner:
         self._gcode_sequence_count = gcode_sequence_count
 
     @property
-    def frequency_start(self) -> int:
-        return self._frequency_start
+    def start_frequency_hz(self) -> int:
+        return self._start_frequency_hz
 
-    @frequency_start.setter
-    def frequency_start(self, frequency_start: int):
-        self._frequency_start = frequency_start
-
-    @property
-    def frequency_stop(self) -> int:
-        return self._frequency_stop
-
-    @frequency_stop.setter
-    def frequency_stop(self, frequency_stop: int):
-        self._frequency_stop = frequency_stop
+    @start_frequency_hz.setter
+    def start_frequency_hz(self, start_frequency_hz: int):
+        self._start_frequency_hz = start_frequency_hz
 
     @property
-    def frequency_step(self) -> int:
-        return self._frequency_step
+    def stop_frequency_hz(self) -> int:
+        return self._stop_frequency_hz
 
-    @frequency_step.setter
-    def frequency_step(self, frequency_step: int):
-        self._frequency_step = frequency_step
-
-    @property
-    def zeta_start(self) -> int:
-        return self._zeta_start
-
-    @zeta_start.setter
-    def zeta_start(self, zeta_start: int):
-        self._zeta_start = zeta_start
+    @stop_frequency_hz.setter
+    def stop_frequency_hz(self, stop_frequency_hz: int):
+        self._stop_frequency_hz = stop_frequency_hz
 
     @property
-    def zeta_stop(self) -> int:
-        return self._zeta_stop
+    def step_frequency_hz(self) -> int:
+        return self._step_frequency_hz
 
-    @zeta_stop.setter
-    def zeta_stop(self, zeta_stop: int):
-        self._zeta_stop = zeta_stop
+    @step_frequency_hz.setter
+    def step_frequency_hz(self, step_frequency_hz: int):
+        self._step_frequency_hz = step_frequency_hz
 
     @property
-    def zeta_step(self) -> int:
-        return self._zeta_step
+    def start_zeta_em2(self) -> int:
+        return self._start_zeta_em2
 
-    @zeta_step.setter
-    def zeta_step(self, zeta_step: int):
-        self._zeta_step = zeta_step
+    @start_zeta_em2.setter
+    def start_zeta_em2(self, start_zeta_em2: int):
+        self._start_zeta_em2 = start_zeta_em2
+
+    @property
+    def stop_zeta_em2(self) -> int:
+        return self._stop_zeta_em2
+
+    @stop_zeta_em2.setter
+    def stop_zeta_em2(self, stop_zeta_em2: int):
+        self._stop_zeta_em2 = stop_zeta_em2
+
+    @property
+    def step_zeta_em2(self) -> int:
+        return self._step_zeta_em2
+
+    @step_zeta_em2.setter
+    def step_zeta_em2(self, step_zeta_em2: int):
+        self._step_zeta_em2 = step_zeta_em2
 
     @property
     def output_file_prefix(self) -> str:
@@ -354,12 +354,12 @@ class RecordStepSeriesRunner:
                         gcode_distance_mm=self.gcode_distance_mm,
                         gcode_step_repeat_count=self.gcode_step_count,
                         gcode_sequence_repeat_count=self.gcode_sequence_count,
-                        fx_start=self.frequency_start,
-                        fx_stop=self.frequency_stop,
-                        fx_step=self.frequency_step,
-                        zeta_start=self.zeta_start,
-                        zeta_stop=self.zeta_stop,
-                        zeta_step=self.zeta_step,
+                        fx_start_hz=self.start_frequency_hz,
+                        fx_stop_hz=self.stop_frequency_hz,
+                        fx_step_hz=self.step_frequency_hz,
+                        zeta_start_em2=self.start_zeta_em2,
+                        zeta_stop_em2=self.start_zeta_em2,
+                        zeta_step_em2=self.step_zeta_em2,
                         output_file_prefix=self.output_file_prefix,
                         output_dir=self.output_dir,
                         do_dry_run=self.do_dry_run,
