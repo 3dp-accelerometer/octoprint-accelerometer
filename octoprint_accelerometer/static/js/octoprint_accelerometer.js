@@ -9,22 +9,22 @@ $(function() {
     // ----- GET/POST API
 
     PLUGIN_NAME = "octoprint_accelerometer";
-
     function requestGet(request, optional = "") {
-        return OctoPrint.simpleApiGet(PLUGIN_NAME +"?q="+ request + optional);
+        return OctoPrint.get(OctoPrint.getBlueprintUrl(PLUGIN_NAME) + "/" + request + optional);
     };
 
-    function requestCommandPost (command, payload) {
-        return OctoPrint.simpleApiCommand(PLUGIN_NAME, command, payload);
+    function requestPost (command, payload_json = {}) {
+        return OctoPrint.postJson(OctoPrint.getBlueprintUrl(PLUGIN_NAME) + "/" + command, payload_json);
     };
 
-    function pluginGetEstimate() { return requestGet("estimate"); }
-    function pluginGetAllParameters() { return requestGet("parameters"); }
-    function pluginGetParameters(names_list) { return requestGet("parameters", "&v=" + names_list); }
+    function pluginGetEstimate() { return requestGet("get_estimate"); }
+    function pluginGetAllParameters() { return requestGet("get_parameters"); }
+    function pluginGetParameters(names_list) { return requestGet("get_parameters", "?v=" + names_list); }
 
-    function pluginDoStartRecording() { return requestCommandPost("start_recording", {}); };
-    function pluginDoAbortRecording() { return requestCommandPost("abort_recording", {}); };
-    function pluginDoSetValues(values_dict) { return requestCommandPost("set_values", values_dict); };
+    function pluginDoStartRecording() { return requestPost("start_recording"); };
+    function pluginDoAbortRecording() { return requestPost("abort_recording"); };
+    function pluginDoSetValues(values_dict) { return requestPost("set_values", values_dict); };
+    function pluginDoStartDataProcessing(values_dict) { return requestPost("start_data_processing", {}); };
 
     // ----- helper
 

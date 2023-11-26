@@ -1,8 +1,7 @@
-from typing import Any, Dict, List, Literal, Callable, Optional, Tuple
+from typing import Any, Dict, List, Literal, Optional, Tuple
 
 import flask
 import octoprint.plugin
-from octoprint.server.util.flask import OctoPrintFlaskRequest
 from py3dpaxxel.cli.args import convert_axis_from_str
 from py3dpaxxel.controller.api import Py3dpAxxel
 from py3dpaxxel.data_decomposition.decompose_runner import DataDecomposeRunner
@@ -26,7 +25,7 @@ class OctoprintAccelerometerPlugin(octoprint.plugin.StartupPlugin,
                                    octoprint.plugin.SettingsPlugin,
                                    octoprint.plugin.AssetPlugin,
                                    octoprint.plugin.TemplatePlugin,
-                                   octoprint.plugin.SimpleApiPlugin):
+                                   octoprint.plugin.BlueprintPlugin):
     OUTPUT_FILE_NAME_PREFIX: str = "axxel"
 
     # noinspection PyMissingConstructor
@@ -96,36 +95,43 @@ class OctoprintAccelerometerPlugin(octoprint.plugin.StartupPlugin,
         self.devices_seen = seen_devices
         self.device = primary if primary is not None else ""
 
-    def get_api_commands(self):
-        return dict(
-            set_values=[],
-            start_recording=[],
-            abort_recording=[],
-            start_data_processing=[])
+    @octoprint.plugin.BlueprintPlugin.route("/set_values", methods=["POST"])
+    def on_api_set_values(self):
+        data = flask.request.json
+        self._update_members_from_api(data)
+        response = flask.jsonify(message="OK")
+        response.status_code = 202
+        return response
 
-    def on_api_command(self, command, data):
-        if command == "set_values":
-            self._update_members_from_api(data)
-        elif command == "start_recording":
-            self._start_recording()
-        elif command == "abort_recording":
-            self._abort_recording()
-        elif command == "start_data_processing":
-            self._start_data_processing()
+    @octoprint.plugin.BlueprintPlugin.route("/start_recording", methods=["POST"])
+    def on_api_start_recording(self):
+        data = flask.request.json
+        self._start_recording()
+        response = flask.jsonify(message="OK")
+        response.status_code = 202
+        return response
 
-    def on_api_get(self, request: OctoPrintFlaskRequest):
-        known_args: Dict[str, Dict[str, Callable[[Dict[str, str]], Any]]] = {
-            "q": {
-                "estimate": self._estimate_duration,
-                "parameters": self._get_parameter_dict,
-            }}
+    @octoprint.plugin.BlueprintPlugin.route("/abort_recording", methods=["POST"])
+    def on_api_abort_recording(self):
+        self._abort_recording()
+        response = flask.jsonify(message="OK")
+        response.status_code = 202
+        return response
 
-        for argument, value in request.args.items():
-            if argument in known_args.keys():
-                if value in known_args[argument]:
-                    return flask.jsonify({f"{value}": known_args[argument][value](request.args)})
+    @octoprint.plugin.BlueprintPlugin.route("/start_data_processing", methods=["POST"])
+    def on_api_start_data_processing(self):
+        self._start_data_processing()
+        response = flask.jsonify(message="OK")
+        response.status_code = 202
+        return response
 
-        return flask.jsonify(known_requests=[(k, [k for k in v.keys()]) for k, v in known_args.items()])
+    @octoprint.plugin.BlueprintPlugin.route("/get_estimate", methods=["GET"])
+    def on_api_get_estimate(self):
+        return flask.jsonify({f"estimate": self._estimate_duration()})
+
+    @octoprint.plugin.BlueprintPlugin.route("/get_parameters", methods=["GET"])
+    def on_api_get_parameters(self):
+        return flask.jsonify({f"parameters": self._get_parameter_dict(flask.request.args)})
 
     def get_template_vars(self):
         return dict(estimated_duration_s=self._estimate_duration())
@@ -286,7 +292,7 @@ class OctoprintAccelerometerPlugin(octoprint.plugin.StartupPlugin,
                                              self.anchor_point_coord_y_mm,
                                              self.anchor_point_coord_z_mm + int(self.distance_z_mm // 2))
 
-    def _estimate_duration(self, _args: Dict[str, str] = None) -> float:
+    def _estimate_duration(self) -> float:
         axs: List[Literal["x", "y", "z"]] = [ax for ax, enabled in [("x", self.do_sample_x), ("y", self.do_sample_y), ("z", self.do_sample_z)] if enabled]
         sequences_count = len(RunArgsGenerator(
             sequence_repeat_count=self.sequence_count,
