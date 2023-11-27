@@ -1,11 +1,16 @@
+import os
 from typing import Any, Dict, List, Literal, Optional, Tuple
 
 import flask
 import octoprint.plugin
+from octoprint.server.util.tornado import LargeResponseHandler, path_validation_factory
+from octoprint.util import is_hidden_path
 from py3dpaxxel.cli.args import convert_axis_from_str
 from py3dpaxxel.controller.api import Py3dpAxxel
 from py3dpaxxel.data_decomposition.decompose_runner import DataDecomposeRunner
 from py3dpaxxel.sampling_tasks.series_argument_generator import RunArgsGenerator
+from py3dpaxxel.storage.file_filter import FileSelector
+from py3dpaxxel.storage.filename_meta import FilenameMeta
 
 from octoprint_accelerometer.event_types import DataProcessingEventType, RecordingEventType
 from octoprint_accelerometer.record_step_series import RecordStepSeriesRunner
@@ -26,7 +31,8 @@ class OctoprintAccelerometerPlugin(octoprint.plugin.StartupPlugin,
                                    octoprint.plugin.AssetPlugin,
                                    octoprint.plugin.TemplatePlugin,
                                    octoprint.plugin.BlueprintPlugin):
-    OUTPUT_FILE_NAME_PREFIX: str = "axxel"
+    OUTPUT_STREAM_FILE_NAME_PREFIX: str = "axxel"
+    OUTPUT_FFT_FILE_NAME_PREFIX: str = "fft"
 
     # noinspection PyMissingConstructor
     def __init__(self):
@@ -132,6 +138,31 @@ class OctoprintAccelerometerPlugin(octoprint.plugin.StartupPlugin,
     @octoprint.plugin.BlueprintPlugin.route("/get_parameters", methods=["GET"])
     def on_api_get_parameters(self):
         return flask.jsonify({f"parameters": self._get_parameter_dict(flask.request.args)})
+
+    @octoprint.plugin.BlueprintPlugin.route("/get_files_listing", methods=["GET"])
+    def on_api_get_files_listing(self):
+        fs = FileSelector(os.path.join(self.get_plugin_data_folder(), ".*"))
+        return flask.jsonify({f"files": [f.filename_ext for f in fs.filter()]})
+
+    @octoprint.plugin.BlueprintPlugin.route("/get_runs_listing", methods=["GET"])
+    def on_api_get_runs_listing(self):
+        fs = FileSelector(os.path.join(self.get_plugin_data_folder(), ".*"))
+        runs: set = set([FilenameMeta().from_filename(fn.filename_ext).prefix_2 for fn in fs.filter()])
+        return flask.jsonify({f"runs": list(runs)})
+
+    def route_hook(self, _server_routes, *_args, **_kwargs):
+        return [
+            (r"/download/(.*)",
+             LargeResponseHandler,
+             dict(path=self.get_plugin_data_folder(),
+                  mime_type_guesser=lambda * args, ** kwargs: "text/plain",
+                  stream_body=True,
+                  as_attachment=False,
+                  path_validation=path_validation_factory(
+                      lambda path: not is_hidden_path(path), status_code=404)
+                  )
+             )
+        ]
 
     def get_template_vars(self):
         return dict(estimated_duration_s=self._estimate_duration())
@@ -351,7 +382,7 @@ class OctoprintAccelerometerPlugin(octoprint.plugin.StartupPlugin,
             start_zeta_em2=self.start_zeta_em2,
             stop_zeta_em2=self.stop_zeta_em2,
             step_zeta_em2=self.step_zeta_em2,
-            output_file_prefix=self.OUTPUT_FILE_NAME_PREFIX,
+            output_file_prefix=self.OUTPUT_STREAM_FILE_NAME_PREFIX,
             output_dir=self.get_plugin_data_folder(),
             do_dry_run=self.do_dry_run)
 
@@ -414,10 +445,10 @@ class OctoprintAccelerometerPlugin(octoprint.plugin.StartupPlugin,
         runner = DataDecomposeRunner(
             command="algo",
             input_dir=self.get_plugin_data_folder(),
-            input_file_prefix="axxel",
+            input_file_prefix=self.OUTPUT_STREAM_FILE_NAME_PREFIX,
             algorithm_d1="discrete_blackman",
             output_dir=self.get_plugin_data_folder(),
-            output_file_prefix="fft",
+            output_file_prefix=self.OUTPUT_FFT_FILE_NAME_PREFIX,
             output_overwrite=False)
         self._push_data_processing_event_to_ui(DataProcessingEventType.PROCESSING)
         runner.run()

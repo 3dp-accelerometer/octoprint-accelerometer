@@ -13,5 +13,6 @@ def __plugin_load__():
 
     global __plugin_hooks__
     __plugin_hooks__ = {
+        "octoprint.server.http.routes": __plugin_implementation__.route_hook,
         "octoprint.plugin.softwareupdate.check_config": implementation.get_update_information,
     }

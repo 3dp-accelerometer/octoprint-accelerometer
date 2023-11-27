@@ -220,5 +220,10 @@
                                          ui_data_processing_state() === 'ABORTED' ? '&#9888; Task aborted' :
                                          ''"></span>
     <br/>
+    <ul class="muted" data-bind="foreach: ui_files_list">
+        <li class="divider">
+            <a data-bind="text: $data, attr: { href: 'plugin/octoprint_accelerometer/download/' + $data }"></a>
+        </li>
+    </ul>
 
 </form>

@@ -6,7 +6,7 @@
  */
 $(function() {
 
-    // ----- GET/POST API
+    // -------------------------------------------------- GET/POST API
 
     PLUGIN_NAME = "octoprint_accelerometer";
     function requestGet(request, optional = "") {
@@ -20,13 +20,15 @@ $(function() {
     function pluginGetEstimate() { return requestGet("get_estimate"); }
     function pluginGetAllParameters() { return requestGet("get_parameters"); }
     function pluginGetParameters(names_list) { return requestGet("get_parameters", "?v=" + names_list); }
+    function pluginGetFilesListing(names_list) { return requestGet("get_files_listing"); }
+    function pluginGetRunsListing(names_list) { return requestGet("get_runs_listing"); }
 
     function pluginDoStartRecording() { return requestPost("start_recording"); };
     function pluginDoAbortRecording() { return requestPost("abort_recording"); };
     function pluginDoSetValues(values_dict) { return requestPost("set_values", values_dict); };
     function pluginDoStartDataProcessing(values_dict) { return requestPost("start_data_processing", {}); };
 
-    // ----- helper
+    // -------------------------------------------------- helper
 
     function secondsToReadableString(seconds) {
         minutes = Math.floor(seconds / 60);
@@ -40,7 +42,7 @@ $(function() {
         return Math.floor((stop - start) / increment);
     };
 
-    // ----- tab view model
+    // -------------------------------------------------- tab view model
 
     function AccelerometerTabViewModel(parameters) {
         let self = this;
@@ -50,7 +52,7 @@ $(function() {
         self.settings = parameters[2];
         self.printer_state = parameters[3];
 
-        // variables shared among plugin, settings and UI
+        // settings: shared among plugin, settings and UI
         self.ui_estimated_recording_duration_text = ko.observable();
         self.ui_do_sample_x = ko.observable();
         self.ui_do_sample_y = ko.observable();
@@ -82,17 +84,18 @@ $(function() {
         self.ui_data_remove_before_run = ko.observable();
         self.ui_do_dry_run = ko.observable();
 
-        // variables shared among plugin and UI
+        // variables computed by plugin and shared with UI
         self.ui_devices_seen = ko.observable();
         self.ui_device = ko.observable();
+        self.ui_files_list = ko.observable();
 
-        // variables shared with UI
+        // variables computed in UI
         self.ui_frequency_hz_step_total_count = ko.observable();
         self.ui_zeta_em2_step_total_count = ko.observable();
 
-        // volatile UI variables that come via onDataUpdaterPluginMessage
-        // callback and do not require loading from the plugin itself;
-        // its okay to loose those values on page reload
+        // volatile UI variables that come via onDataUpdaterPluginMessage callback
+        //   - do not require loading from the plugin itself
+        //   - its okay to loose those values on page reload
         self.ui_recording_state = ko.observable("");
         self.ui_data_processing_state = ko.observable("");
         self.ui_last_recording_duration_str = ko.observable();
@@ -196,6 +199,7 @@ $(function() {
                 if (!self.login_state.hasPermission(self.access.permissions.CONNECTION)) { return; }
                 self.requestPluginEstimation();
                 self.requestAllParameters();
+                self.requestFilesListing();
             }
             getPluginData();
         };
@@ -218,7 +222,7 @@ $(function() {
             }
         };
 
-        // ----- plugin API
+        // -------------------------------------------------- plugin API
 
         self.updatePluginValuesFromUi = function (values_list = []) {
             let all_values =
@@ -267,6 +271,13 @@ $(function() {
         self.requestPluginEstimation = function () { pluginGetEstimate().done(self.updateUiFromGetResponse); };
 
         self.requestAllParameters = function () { pluginGetAllParameters().done(self.updateUiFromGetResponse); };
+        self.requestFilesListing = function () { pluginGetFilesListing().done(self.updateUiFilesFromGetResponse); };
+
+        self.updateUiFilesFromGetResponse = function (response) {
+            if (Object.hasOwn(response, "files")) {
+                self.ui_files_list(response.files);
+            }
+        };
 
         self.updateUiFromGetResponse = function (response) {
             self.ui_frequency_hz_step_total_count(
@@ -356,7 +367,7 @@ $(function() {
 
     };
 
-    // ----- settings view model
+    // -------------------------------------------------- settings view model
 
     function AccelerometerSettingsViewModel(parameters) {
         let self = this;
@@ -420,7 +431,7 @@ $(function() {
         };
     };
 
-    // ----- register view models
+    // -------------------------------------------------- register view models
 
     OCTOPRINT_VIEWMODELS.push({
         construct: AccelerometerTabViewModel,
