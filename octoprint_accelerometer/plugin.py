@@ -155,7 +155,7 @@ class OctoprintAccelerometerPlugin(octoprint.plugin.StartupPlugin,
             (r"/download/(.*)",
              LargeResponseHandler,
              dict(path=self.get_plugin_data_folder(),
-                  mime_type_guesser=lambda * args, ** kwargs: "text/plain",
+                  mime_type_guesser=lambda *args, **kwargs: "text/plain",
                   stream_body=True,
                   as_attachment=False,
                   path_validation=path_validation_factory(
