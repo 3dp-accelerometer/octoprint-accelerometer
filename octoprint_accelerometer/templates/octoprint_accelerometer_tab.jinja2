@@ -214,11 +214,10 @@
 
         <span class="muted" data-bind="text: ui_data_processing_state() === 'STARTING' ? 'Start processing...' :
                                          ui_data_processing_state() === 'PROCESSING' ? 'Processing...' :
-                                         ui_data_processing_state() === 'PROCESSING_FINISHED' ? 'Data decomposition finished in ' +
-                                                                                                 ui_last_data_processing_duration_str() + ' (' +
-                                                                                                 'total: ' + ui_last_data_processing_total_files_count() + ' ' +
-                                                                                                 'processed: ' + ui_last_data_processing_processed_files_count() + ' ' +
-                                                                                                 'skipped: ' + ui_last_data_processing_skipped_files_count() + ')' :
+                                         ui_data_processing_state() === 'PROCESSING_FINISHED' ? 'Data decomposition finished in ' + ui_last_data_processing_duration_str() + '. ' +
+                                                                                                 'Processed ' + ui_last_data_processing_processed_files_count() + ' new files ' +
+                                                                                                 'out of ' + ui_last_data_processing_total_files_count() + ' (' +
+                                                                                                 + ui_last_data_processing_skipped_files_count() + ' already processed).' :
                                          ui_data_processing_state() === 'UNHANDLED_EXCEPTION' ? '&#9888; Unhandled exception, see logs' :
                                          ui_data_processing_state() === 'ABORTING' ? '&#9888; Aborting task...' :
                                          ui_data_processing_state() === 'ABORTED' ? '&#9888; Task aborted' :
