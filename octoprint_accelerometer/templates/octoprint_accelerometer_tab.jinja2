@@ -199,31 +199,35 @@
     <br/>
     <span class="muted" data-bind="text: ui_recording_state() === 'STARTING' ? 'Start recording...' :
                                          ui_recording_state() === 'PROCESSING' ? 'Recording...' :
-                                         ui_recording_state() === 'PROCESSING_FINISHED' ? 'Recording finished in ' + ui_last_recording_duration_str() :
+                                         ui_recording_state() === 'PROCESSING_FINISHED' ? 'Recording finished in ' + ui_last_data_recording_duration_str() :
                                          ui_recording_state() === 'FIFO_OVERRUN' ? '&#9888; FiFO overrun detected, reduce output data rate' :
                                          ui_recording_state() === 'UNHANDLED_EXCEPTION' ? '&#9888; Unhandled exception, see logs' :
                                          ui_recording_state() === 'ABORTING' ? '&#9888; Aborting task...' :
                                          ui_recording_state() === 'ABORTED' ? '&#9888; Task aborted' :
                                          ''"></span>
     <br/>
+
     <hr/>
 
     <div class="control-group">
-        <h4>Data Visualisation - TODO</h4>
-    </div>
-    <br/>
-    <span class="muted" data-bind="text: ui_data_processing_state() === 'STARTING' ? 'Start processing...' :
+        <h4>Data Visualisation</h4>
+
+        <span class="muted" data-bind="text: ui_data_processing_state() === 'STARTING' ? 'Start processing...' :
                                          ui_data_processing_state() === 'PROCESSING' ? 'Processing...' :
-                                         ui_data_processing_state() === 'PROCESSING_FINISHED' ? 'Processing finished in ' + ui_last_data_processing_duration_str() :
+                                         ui_data_processing_state() === 'PROCESSING_FINISHED' ? 'Data decomposition finished in ' +
+                                                                                                 ui_last_data_processing_duration_str() + ' (' +
+                                                                                                 'total: ' + ui_last_data_processing_total_files_count() + ' ' +
+                                                                                                 'processed: ' + ui_last_data_processing_processed_files_count() + ' ' +
+                                                                                                 'skipped: ' + ui_last_data_processing_skipped_files_count() + ')' :
                                          ui_data_processing_state() === 'UNHANDLED_EXCEPTION' ? '&#9888; Unhandled exception, see logs' :
                                          ui_data_processing_state() === 'ABORTING' ? '&#9888; Aborting task...' :
                                          ui_data_processing_state() === 'ABORTED' ? '&#9888; Task aborted' :
                                          ''"></span>
-    <br/>
-    <ul class="muted" data-bind="foreach: ui_files_list">
-        <li class="divider">
-            <a data-bind="text: $data, attr: { href: 'plugin/octoprint_accelerometer/download/' + $data }"></a>
-        </li>
-    </ul>
-
+        <br/>
+        <ul class="muted" data-bind="foreach: ui_stream_files_list">
+            <li class="divider">
+                <a data-bind="text: $data.file_name, attr: { href: 'plugin/octoprint_accelerometer/download/' + $data.file_name }"></a>
+            </li>
+        </ul>
+    </div>
 </form>

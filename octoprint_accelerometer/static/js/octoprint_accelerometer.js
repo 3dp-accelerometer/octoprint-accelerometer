@@ -21,6 +21,8 @@ $(function() {
     function pluginGetAllParameters() { return requestGet("get_parameters"); }
     function pluginGetParameters(names_list) { return requestGet("get_parameters", "?v=" + names_list); }
     function pluginGetFilesListing(names_list) { return requestGet("get_files_listing"); }
+    function pluginGetStreamFilesListing(names_list) { return requestGet("get_stream_files_listing"); }
+    function pluginGetFftFilesListing(names_list) { return requestGet("get_fft_files_listing"); }
     function pluginGetRunsListing(names_list) { return requestGet("get_runs_listing"); }
 
     function pluginDoStartRecording() { return requestPost("start_recording"); };
@@ -87,7 +89,7 @@ $(function() {
         // variables computed by plugin and shared with UI
         self.ui_devices_seen = ko.observable();
         self.ui_device = ko.observable();
-        self.ui_files_list = ko.observable();
+        self.ui_stream_files_list = ko.observable();
 
         // variables computed in UI
         self.ui_frequency_hz_step_total_count = ko.observable();
@@ -98,8 +100,11 @@ $(function() {
         //   - its okay to loose those values on page reload
         self.ui_recording_state = ko.observable("");
         self.ui_data_processing_state = ko.observable("");
-        self.ui_last_recording_duration_str = ko.observable();
+        self.ui_last_data_recording_duration_str = ko.observable();
         self.ui_last_data_processing_duration_str = ko.observable();
+        self.ui_last_data_processing_total_files_count = ko.observable();
+		self.ui_last_data_processing_processed_files_count = ko.observable();
+		self.ui_last_data_processing_skipped_files_count = ko.observable();
 
         self.onStartupComplete = function () {
             self.plugin_settings = self.settings.settings.plugins.octoprint_accelerometer;
@@ -199,7 +204,7 @@ $(function() {
                 if (!self.login_state.hasPermission(self.access.permissions.CONNECTION)) { return; }
                 self.requestPluginEstimation();
                 self.requestAllParameters();
-                self.requestFilesListing();
+                self.requestStreamFilesListing();
             }
             getPluginData();
         };
@@ -271,11 +276,11 @@ $(function() {
         self.requestPluginEstimation = function () { pluginGetEstimate().done(self.updateUiFromGetResponse); };
 
         self.requestAllParameters = function () { pluginGetAllParameters().done(self.updateUiFromGetResponse); };
-        self.requestFilesListing = function () { pluginGetFilesListing().done(self.updateUiFilesFromGetResponse); };
+        self.requestStreamFilesListing = function () { pluginGetStreamFilesListing().done(self.updateUiStreamFilesFromGetResponse); };
 
-        self.updateUiFilesFromGetResponse = function (response) {
-            if (Object.hasOwn(response, "files")) {
-                self.ui_files_list(response.files);
+        self.updateUiStreamFilesFromGetResponse = function (response) {
+            if (Object.hasOwn(response, "stream_files")) {
+                self.ui_stream_files_list(response.stream_files);
             }
         };
 
@@ -359,10 +364,21 @@ $(function() {
             console.log(data);
 
             if (plugin !== PLUGIN_NAME) { return; }
-			if ("RecordingEventType" in data) { self.ui_recording_state(data["RecordingEventType"]) }
-			if ("DataProcessingEventType" in data) { self.ui_data_processing_state(data["DataProcessingEventType"]) }
-			if ("LAST_RECORDING_DURATION_S" in data) { self.ui_last_recording_duration_str(secondsToReadableString(data["LAST_RECORDING_DURATION_S"])) }
+			if ("RecordingEventType" in data) {
+			    let recording_event = data["RecordingEventType"];
+			    self.ui_recording_state(recording_event);
+			    if (["PROCESSING_FINISHED", "UNHANDLED_EXCEPTION", "ABORTED"].includes(recording_event)) {
+			        pluginDoStartDataProcessing();
+			    }
+			}
+			if ("DataProcessingEventType" in data) {
+			    self.ui_data_processing_state(data["DataProcessingEventType"]);
+			}
+			if ("LAST_DATA_RECORDING_DURATION_S" in data) { self.ui_last_data_recording_duration_str(secondsToReadableString(data["LAST_DATA_RECORDING_DURATION_S"])) }
 			if ("LAST_DATA_PROCESSING_DURATION_S" in data) { self.ui_last_data_processing_duration_str(secondsToReadableString(data["LAST_DATA_PROCESSING_DURATION_S"])) }
+			if ("FILES_TOTAL_COUNT" in data) { self.ui_last_data_processing_total_files_count(data["FILES_TOTAL_COUNT"]) }
+			if ("FILES_PROCESSED_COUNT" in data) { self.ui_last_data_processing_processed_files_count(data["FILES_PROCESSED_COUNT"]) }
+			if ("FILES_SKIPPED_COUNT" in data) { self.ui_last_data_processing_skipped_files_count(data["FILES_SKIPPED_COUNT"]) }
         };
 
     };
