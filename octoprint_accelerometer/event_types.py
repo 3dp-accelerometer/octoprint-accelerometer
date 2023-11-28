@@ -2,6 +2,10 @@ from enum import IntEnum
 
 
 class RecordingEventType(IntEnum):
+    """
+    Types that can be emitted by callback from the recording task.
+    """
+
     STARTING = 1
     "processing: sane execution event"
     PROCESSING = 2
@@ -21,15 +25,16 @@ class RecordingEventType(IntEnum):
 
 
 class DataProcessingEventType(IntEnum):
+    """
+    Types that can be emitted by callback from the data processing task.
+    """
+
     STARTING = 1
     "data processing: sane execution event"
     PROCESSING = 2
     "data processing: sane execution event"
     PROCESSING_FINISHED = 3
     "data processing: sane execution event"
-
-    NO_DEVICE_FOUND = 11
-    "data processing: exceptional event"
 
     UNHANDLED_EXCEPTION = 12
     "data processing: exceptional event"

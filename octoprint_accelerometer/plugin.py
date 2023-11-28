@@ -1,5 +1,5 @@
 import os
-from typing import Any, Dict, List, Literal, Optional, Tuple
+from typing import Any, Dict, List, Literal, Optional, Tuple, Set
 
 import flask
 import octoprint.plugin
@@ -7,11 +7,11 @@ from octoprint.server.util.tornado import LargeResponseHandler, path_validation_
 from octoprint.util import is_hidden_path
 from py3dpaxxel.cli.args import convert_axis_from_str
 from py3dpaxxel.controller.api import Py3dpAxxel
-from py3dpaxxel.data_decomposition.decompose_runner import DataDecomposeRunner
 from py3dpaxxel.sampling_tasks.series_argument_generator import RunArgsGenerator
-from py3dpaxxel.storage.file_filter import FileSelector
-from py3dpaxxel.storage.filename_meta import FilenameMeta
+from py3dpaxxel.storage.file_filter import FileSelector, File
+from py3dpaxxel.storage.filename_meta import FilenameMeta, FileContent
 
+from octoprint_accelerometer.data_post_process import DataPostProcessRunner
 from octoprint_accelerometer.event_types import DataProcessingEventType, RecordingEventType
 from octoprint_accelerometer.record_step_series import RecordStepSeriesRunner
 
@@ -84,7 +84,8 @@ class OctoprintAccelerometerPlugin(octoprint.plugin.StartupPlugin,
         self.axis_z_sampling_start: Point3D = Point3D(0, 0, 0)
 
         # recording runner: once constructed before invocation all properties shall be updated
-        self.runner: Optional[RecordStepSeriesRunner] = None
+        self.data_recording_runner: Optional[RecordStepSeriesRunner] = None
+        self.data_processing_runner: Optional[DataPostProcessRunner] = None
 
     @staticmethod
     def _get_devices() -> Tuple[str, List[str]]:
@@ -111,7 +112,6 @@ class OctoprintAccelerometerPlugin(octoprint.plugin.StartupPlugin,
 
     @octoprint.plugin.BlueprintPlugin.route("/start_recording", methods=["POST"])
     def on_api_start_recording(self):
-        data = flask.request.json
         self._start_recording()
         response = flask.jsonify(message="OK")
         response.status_code = 202
@@ -142,13 +142,39 @@ class OctoprintAccelerometerPlugin(octoprint.plugin.StartupPlugin,
     @octoprint.plugin.BlueprintPlugin.route("/get_files_listing", methods=["GET"])
     def on_api_get_files_listing(self):
         fs = FileSelector(os.path.join(self.get_plugin_data_folder(), ".*"))
-        return flask.jsonify({f"files": [f.filename_ext for f in fs.filter()]})
+        files_details = {f.filename_ext: vars(f) for f in fs.filter()}
+        return flask.jsonify({f"files": files_details})
+
+    @octoprint.plugin.BlueprintPlugin.route("/get_stream_files_listing", methods=["GET"])
+    def on_api_get_stream_files_listing(self):
+        fs = FileSelector(os.path.join(self.get_plugin_data_folder(), f"{self.OUTPUT_STREAM_FILE_NAME_PREFIX}-.*\\.tsv$"))
+        files_details = [{"file_name": f.filename_ext} | vars(FilenameMeta().from_filename(f.filename_ext, file_content=FileContent.STREAM)) for f in fs.filter()]
+        return flask.jsonify({f"stream_files": files_details})
+
+    @octoprint.plugin.BlueprintPlugin.route("/get_fft_files_listing", methods=["GET"])
+    def on_api_get_fft_files_listing(self):
+        fs = FileSelector(os.path.join(self.get_plugin_data_folder(), f"{self.OUTPUT_FFT_FILE_NAME_PREFIX}-.*\\.tsv$"))
+        files_details = [{"file_name": f.filename_ext} | vars(FilenameMeta().from_filename(f.filename_ext, file_content=FileContent.FFT)) for f in fs.filter()]
+        return flask.jsonify({f"fft_files": files_details})
 
     @octoprint.plugin.BlueprintPlugin.route("/get_runs_listing", methods=["GET"])
     def on_api_get_runs_listing(self):
-        fs = FileSelector(os.path.join(self.get_plugin_data_folder(), ".*"))
-        runs: set = set([FilenameMeta().from_filename(fn.filename_ext).prefix_2 for fn in fs.filter()])
-        return flask.jsonify({f"runs": list(runs)})
+        stream_fs = FileSelector(os.path.join(self.get_plugin_data_folder(), f"{self.OUTPUT_STREAM_FILE_NAME_PREFIX}-.*\\.tsv$"))
+        fft_fs = FileSelector(os.path.join(self.get_plugin_data_folder(), f"{self.OUTPUT_FFT_FILE_NAME_PREFIX}-.*\\.tsv$"))
+
+        stream_files_meta_data: List[Tuple[File, FilenameMeta]] = [(f, FilenameMeta().from_filename(f.filename_ext)) for f in stream_fs.filter()]
+        fft_files_meta_data: List[Tuple[File, FilenameMeta]] = [(f, FilenameMeta().from_filename(f.filename_ext, file_content=FileContent.FFT)) for f in fft_fs.filter()]
+
+        runs: Set[str] = set([m.prefix_2 for (_f, m) in stream_files_meta_data])
+        runs_details: Dict[str, List[Dict[str, Any]]] = {run: [] for run in runs}
+
+        for _f, meta in stream_files_meta_data:
+            runs_details[meta.prefix_2].append(vars(meta))
+
+        for _f, meta in fft_files_meta_data:
+            runs_details[meta.prefix_2].append(vars(meta))
+
+        return flask.jsonify({f"runs": runs_details})
 
     def route_hook(self, _server_routes, *_args, **_kwargs):
         return [
@@ -221,7 +247,8 @@ class OctoprintAccelerometerPlugin(octoprint.plugin.StartupPlugin,
     def on_after_startup(self):
         self._update_members_from_settings()
         self._update_seen_devices()
-        self.runner = self._construct_new_step_series_runner()
+        self.data_recording_runner = self._construct_new_step_series_runner()
+        self.data_processing_runner = self._construct_new_data_processing_runner()
 
     def get_assets(self):
         return {"js": ["js/octoprint_accelerometer.js"]}
@@ -360,7 +387,20 @@ class OctoprintAccelerometerPlugin(octoprint.plugin.StartupPlugin,
 
     def _get_selected_axis_str(self) -> List[Literal["x", "y", "z"]]:
         return convert_axis_from_str(
-            "" + "x" if self.do_sample_x else "" + "y" if self.do_sample_y else "" + "z" if self.do_sample_z else "")
+            f"{'x' if self.do_sample_x else ''}{'y' if self.do_sample_y else ''}{'z' if self.do_sample_z else ''}"
+        )
+
+    def _construct_new_data_processing_runner(self) -> DataPostProcessRunner:
+        return DataPostProcessRunner(
+            logger=self._logger,
+            on_event_callback=self.on_data_processing_callback,
+            input_dir=self.get_plugin_data_folder(),
+            input_file_prefix=self.OUTPUT_STREAM_FILE_NAME_PREFIX,
+            algorithm_d1="discrete_blackman",
+            output_dir=self.get_plugin_data_folder(),
+            output_file_prefix=self.OUTPUT_FFT_FILE_NAME_PREFIX,
+            output_overwrite=False,
+            do_dry_run=False)
 
     def _construct_new_step_series_runner(self) -> RecordStepSeriesRunner:
         return RecordStepSeriesRunner(
@@ -398,58 +438,63 @@ class OctoprintAccelerometerPlugin(octoprint.plugin.StartupPlugin,
     def on_recording_callback(self, event: RecordingEventType):
         self._push_recording_event_to_ui(event)
         if RecordingEventType.PROCESSING_FINISHED == event:
-            last_run_duration_s = self.runner.get_last_run_duration_s()
+            last_run_duration_s = self.data_recording_runner.get_last_run_duration_s()
             if last_run_duration_s:
-                self._push_data_to_ui({"LAST_RECORDING_DURATION_S": f"{last_run_duration_s}"})
+                self._push_data_to_ui({"LAST_DATA_RECORDING_DURATION_S": f"{last_run_duration_s}"})
 
     def on_data_processing_callback(self, event: DataProcessingEventType):
         self._push_data_processing_event_to_ui(event)
+        if DataProcessingEventType.PROCESSING_FINISHED == event:
+            last_run_duration_s = self.data_processing_runner.get_last_run_duration_s()
+            if last_run_duration_s:
+                self._push_data_to_ui({"LAST_DATA_PROCESSING_DURATION_S": f"{last_run_duration_s}"})
+
+            total, processed, skipped = self.data_processing_runner.get_last_processed_count()
+            if total:
+                self._push_data_to_ui({"FILES_TOTAL_COUNT": f"{total}"})
+            if processed:
+                self._push_data_to_ui({"FILES_PROCESSED_COUNT": f"{processed}"})
+            if skipped:
+                self._push_data_to_ui({"FILES_SKIPPED_COUNT": f"{skipped}"})
 
     def _start_recording(self):
         self._push_recording_event_to_ui(RecordingEventType.STARTING)
 
         self._update_seen_devices()
-        self.runner.controller_serial_device = self.device
-        self.runner.controller_record_timelapse_s = self.recording_timespan_s
-        self.runner.sensor_odr_hz = self.sensor_output_data_rate_hz
+        self.data_recording_runner.controller_serial_device = self.device
+        self.data_recording_runner.controller_record_timelapse_s = self.recording_timespan_s
+        self.data_recording_runner.sensor_odr_hz = self.sensor_output_data_rate_hz
 
         # todo acceleration
         # todo speed
 
-        self.runner.start_frequency_hz = self.start_frequency_hz
-        self.runner.stop_frequency_hz = self.stop_frequency_hz
-        self.runner.step_frequency_hz = self.step_frequency_hz
+        self.data_recording_runner.start_frequency_hz = self.start_frequency_hz
+        self.data_recording_runner.stop_frequency_hz = self.stop_frequency_hz
+        self.data_recording_runner.step_frequency_hz = self.step_frequency_hz
 
-        self.runner.start_zeta_em2 = self.start_zeta_em2
-        self.runner.stop_zeta_em2 = self.stop_zeta_em2
-        self.runner.step_zeta_em2 = self.step_zeta_em2
+        self.data_recording_runner.start_zeta_em2 = self.start_zeta_em2
+        self.data_recording_runner.stop_zeta_em2 = self.stop_zeta_em2
+        self.data_recording_runner.step_zeta_em2 = self.step_zeta_em2
 
-        self.runner.gcode_step_count = self.step_count
-        self.runner.gcode_sequence_count = self.sequence_count
-        self.runner.gcode_start_point_mm = (self.anchor_point_coord_x_mm, self.anchor_point_coord_y_mm, self.anchor_point_coord_z_mm)
-        self.runner.gcode_axis = self._get_selected_axis_str()
-        self.runner.gcode_distance_mm = self.distance_x_mm  # todo: x y z distances
+        self.data_recording_runner.gcode_step_count = self.step_count
+        self.data_recording_runner.gcode_sequence_count = self.sequence_count
+        self.data_recording_runner.gcode_start_point_mm = (self.anchor_point_coord_x_mm, self.anchor_point_coord_y_mm, self.anchor_point_coord_z_mm)
+        self.data_recording_runner.gcode_axis = self._get_selected_axis_str()
+        self.data_recording_runner.gcode_distance_mm = self.distance_x_mm  # todo: x y z distances
 
-        self.runner.do_dry_run = self.do_dry_run
+        self.data_recording_runner.do_dry_run = self.do_dry_run
 
-        if not self.runner.is_running():
-            self.runner.run()
+        if not self.data_recording_runner.is_running():
+            self.data_recording_runner.run()
         else:
-            self._logger.warning("requested start recording but recording task is still running")
+            self._logger.warning("requested recording but recording task is still running")
 
     def _abort_recording(self):
-        self.runner.stop()
+        self.data_recording_runner.stop()
 
     def _start_data_processing(self):
         self._push_data_processing_event_to_ui(DataProcessingEventType.STARTING)
-        runner = DataDecomposeRunner(
-            command="algo",
-            input_dir=self.get_plugin_data_folder(),
-            input_file_prefix=self.OUTPUT_STREAM_FILE_NAME_PREFIX,
-            algorithm_d1="discrete_blackman",
-            output_dir=self.get_plugin_data_folder(),
-            output_file_prefix=self.OUTPUT_FFT_FILE_NAME_PREFIX,
-            output_overwrite=False)
-        self._push_data_processing_event_to_ui(DataProcessingEventType.PROCESSING)
-        runner.run()
-        self._push_data_processing_event_to_ui(DataProcessingEventType.PROCESSING_FINISHED)
+        if not self.data_processing_runner.is_running():
+            self.data_processing_runner.run()
+        else:
+            self._logger.warning("requested data processing but task is still running")
