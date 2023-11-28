@@ -1,5 +1,6 @@
 import threading
 import time
+import traceback
 from logging import Logger
 from typing import List, Literal, Callable, Optional
 from typing import Tuple
@@ -15,6 +16,9 @@ from octoprint_accelerometer.py3dpaxxel_octo import Py3dpAxxelOcto
 
 
 class RecordStepSeriesTask(Callable):
+    """
+    Wrapper that handles callbacks on task finished. Meant to be run by :class:`threading.Thread`.
+    """
 
     def __init__(self,
                  logger: Logger,
@@ -36,16 +40,19 @@ class RecordStepSeriesTask(Callable):
         except ErrorFifoOverflow as e:
             self.logger.error("controller reported FiFo overrun")
             self.logger.error(str(e))
+            traceback.print_exception(e)
             self._send_on_event_callback(RecordingEventType.FIFO_OVERRUN)
 
         except ErrorUnknownResponse as e:
             self.logger.error("unknown response from controller")
             self.logger.error(str(e))
+            traceback.print_exception(e)
             self._send_on_event_callback(RecordingEventType.UNHANDLED_EXCEPTION)
 
         except Exception as e:
             self.logger.error("unknown controller API error")
             self.logger.error(str(e))
+            traceback.print_exception(e)
             self._send_on_event_callback(RecordingEventType.UNHANDLED_EXCEPTION)
 
     def _send_on_event_callback(self, event: RecordingEventType):
@@ -53,7 +60,10 @@ class RecordStepSeriesTask(Callable):
             self.on_event_callback(event)
 
 
-class RecordStepSeriesThread:
+class RecordStepSeriesBackgroundTask:
+    """
+    Task wrapper to catch exceptions when a task is run by :class:`threading.Thread` so that exceptions can be exposed to the parent thread.
+    """
 
     def __init__(self, logger: Logger, task: RecordStepSeriesTask) -> None:
         self.logger: Logger = logger
@@ -69,11 +79,13 @@ class RecordStepSeriesThread:
         self.thread.start()
 
     def join(self) -> None:
-        self.logger.info("xxx joining")
         self.thread.join()
 
 
 class RecordStepSeriesRunner:
+    """
+    Runner for moving printer, recording streams from accelerometer and saving to data to files.
+    """
 
     def __init__(self,
                  logger: Logger,
@@ -123,9 +135,9 @@ class RecordStepSeriesRunner:
         self._output_dir: str = output_dir
         self._do_dry_run: bool = do_dry_run
         self._do_abort_flag: threading.Event = do_abort_flag
-        self._thread: Optional[RecordStepSeriesThread] = None
-        self._thread_start_timestamp: Optional[float] = None
-        self._thread_stop_timestamp: Optional[float] = None
+        self._background_task: Optional[RecordStepSeriesBackgroundTask] = None
+        self._background_task_start_timestamp: Optional[float] = None
+        self._background_task_stop_timestamp: Optional[float] = None
 
     @property
     def controller_serial_device(self) -> str:
@@ -272,7 +284,7 @@ class RecordStepSeriesRunner:
         self._do_dry_run = do_dry_run
 
     def is_running(self) -> bool:
-        return True if self._thread is not None and self._thread.is_alive() else False
+        return True if self._background_task is not None and self._background_task.is_alive() else False
 
     def task_execution_had_errors(self) -> bool:
         return self.controller_response_error or self.controller_response_error or self.unhandled_exception
@@ -288,9 +300,9 @@ class RecordStepSeriesRunner:
         if self.on_event_callback:
             self.on_event_callback(event)
 
-        # TODO: force an early thread termination not by just exiting run().
-        #  Reason: Thread.is_alive() takes up to 30 seconds after run() exited
-        #  to report not-alive. This sounds like a bug though.
+        # TODO: force an early thread termination not by just terminating run().
+        #  Reason: Thread.is_alive() takes up to 30 seconds after run() terminated
+        #  to report not-alive. This works but sounds like a bug though.
         if event in [RecordingEventType.PROCESSING_FINISHED,
                      RecordingEventType.FIFO_OVERRUN,
                      RecordingEventType.UNHANDLED_EXCEPTION,
@@ -301,13 +313,13 @@ class RecordStepSeriesRunner:
     def stop(self) -> None:
         self._do_abort_flag.set()
         self._send_on_event_callback(RecordingEventType.ABORTING)
-        if self._thread:
+        if self._background_task:
             try:
-                self._thread.join()
+                self._background_task.join()
             except RuntimeError as _e:
                 self.logger.info("no running thread that can be stopped")
-            self._thread = None
-        self._thread_stop_timestamp = time.time()
+            self._background_task = None
+        self._background_task_stop_timestamp = time.time()
         self._send_on_event_callback(RecordingEventType.ABORTED)
 
     def get_last_run_duration_s(self) -> Optional[float]:
@@ -323,7 +335,7 @@ class RecordStepSeriesRunner:
 
         :return: the last known duration; None if unknown of thread is still running
         """
-        return None if not self._thread_stop_timestamp or not self._thread_start_timestamp else self._thread_stop_timestamp - self._thread_start_timestamp
+        return None if not self._thread_stop_timestamp or not self._background_task_start_timestamp else self._thread_stop_timestamp - self._background_task_start_timestamp
 
     def run(self) -> None:
         py3dpaxxel_octo = Py3dpAxxelOcto(self.printer, self.logger)
@@ -331,7 +343,7 @@ class RecordStepSeriesRunner:
         self.controller_response_error = False
         self.unhandled_exception = False
         self._do_abort_flag.clear()
-        self._thread_stop_timestamp = None
+        self._background_task_stop_timestamp = None
 
         if not self.printer.is_operational():
             self.logger.warning("received request to start recording but printer is not operational")
@@ -339,7 +351,7 @@ class RecordStepSeriesRunner:
 
         try:
             self.logger.info("start recording ...")
-            self._thread = RecordStepSeriesThread(
+            self._background_task = RecordStepSeriesBackgroundTask(
                 logger=self.logger,
                 task=RecordStepSeriesTask(
                     logger=self.logger,
@@ -366,8 +378,8 @@ class RecordStepSeriesRunner:
                         do_abort_flag=self._do_abort_flag),
                     on_event_callback=self._send_on_thread_event_callback))
             self._send_on_event_callback(RecordingEventType.PROCESSING)
-            self._thread_start_timestamp = time.time()
-            self._thread.start()
+            self._background_task_start_timestamp = time.time()
+            self._background_task.start()
 
         except Exception as e:
             self.unhandled_exception = True
