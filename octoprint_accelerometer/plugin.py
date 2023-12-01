@@ -251,7 +251,10 @@ class OctoprintAccelerometerPlugin(octoprint.plugin.StartupPlugin,
         self.data_processing_runner = self._construct_new_data_processing_runner()
 
     def get_assets(self):
-        return {"js": ["js/octoprint_accelerometer.js"]}
+        return {"js": ["js/octoprint_accelerometer.js",
+                       "js/d3.js",
+                       "js/plot.js",
+                       "js/datavis.js"]}
 
     def get_update_information(self):
         # see https://docs.octoprint.org/en/master/bundledplugins/softwareupdate.html
