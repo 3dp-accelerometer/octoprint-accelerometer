@@ -211,7 +211,12 @@
 
     <div class="control-group">
         <h4>Data Visualisation</h4>
-
+        <div id="tab_plugin_octoprint_accelerometer_vis"></div>
+        <script type="module">
+            const fileUrl = "plugin/octoprint_accelerometer/download/axxel-30f9c95c-20231127-235625233-s000-ax-f010-z015.tsv";
+            const divNodeId = "#tab_plugin_octoprint_accelerometer_vis";
+            (async () => new OctoAxxelDataVis().plot(fileUrl, divNodeId))();
+        </script>
         <span class="muted" data-bind="text: ui_data_processing_state() === 'STARTING' ? 'Start processing...' :
                                          ui_data_processing_state() === 'PROCESSING' ? 'Processing...' :
                                          ui_data_processing_state() === 'PROCESSING_FINISHED' ? 'Data decomposition finished in ' + ui_last_data_processing_duration_str() + '. ' +
@@ -225,7 +230,10 @@
         <br/>
         <ul class="muted" data-bind="foreach: ui_stream_files_list">
             <li class="divider">
-                <a data-bind="text: $data.file_name, attr: { href: 'plugin/octoprint_accelerometer/download/' + $data.file_name }"></a>
+                <a href="javascript:void(0)"
+                   data-bind="text: $data.file_name,
+                              click: ((id, data) => {(async () => new OctoAxxelDataVis().plot('plugin/octoprint_accelerometer/download/' + data.file_name, id))();; return false;}).bind($data, '#tab_plugin_octoprint_accelerometer_vis')"
+                >bar</a>
             </li>
         </ul>
     </div>
