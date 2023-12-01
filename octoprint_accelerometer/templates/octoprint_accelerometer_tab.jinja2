@@ -211,11 +211,13 @@
 
     <div class="control-group">
         <h4>Data Visualisation</h4>
+        <div id="tab_plugin_octoprint_accelerometer_chart_data_sets" style="width: 800px; height: 400px; overflow-y: scroll"></div>
+        <hr>
         <div id="tab_plugin_octoprint_accelerometer_vis"></div>
         <script type="module">
             const fileUrl = "plugin/octoprint_accelerometer/download/axxel-30f9c95c-20231127-235625233-s000-ax-f010-z015.tsv";
             const divNodeId = "#tab_plugin_octoprint_accelerometer_vis";
-            (async () => new OctoAxxelDataVis().plot(fileUrl, divNodeId))();
+            // (async () => new OctoAxxelDataVis().plot(fileUrl, divNodeId))();
         </script>
         <span class="muted" data-bind="text: ui_data_processing_state() === 'STARTING' ? 'Start processing...' :
                                          ui_data_processing_state() === 'PROCESSING' ? 'Processing...' :

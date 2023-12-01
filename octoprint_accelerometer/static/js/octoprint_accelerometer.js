@@ -18,7 +18,7 @@ $(function() {
     function pluginGetFilesListing(names_list) { return requestGet("get_files_listing"); }
     function pluginGetStreamFilesListing(names_list) { return requestGet("get_stream_files_listing"); }
     function pluginGetFftFilesListing(names_list) { return requestGet("get_fft_files_listing"); }
-    function pluginGetRunsListing(names_list) { return requestGet("get_runs_listing"); }
+    function pluginGetDataListing(names_list) { return requestGet("get_data_listing"); }
 
     function pluginDoStartRecording() { return requestPost("start_recording"); };
     function pluginDoAbortRecording() { return requestPost("abort_recording"); };

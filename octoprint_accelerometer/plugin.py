@@ -1,5 +1,5 @@
 import os
-from typing import Any, Dict, List, Literal, Optional, Tuple, Set
+from typing import Any, Dict, List, Literal, Optional, Tuple, Set, Union
 
 import flask
 import octoprint.plugin
@@ -9,7 +9,7 @@ from py3dpaxxel.cli.args import convert_axis_from_str
 from py3dpaxxel.controller.api import Py3dpAxxel
 from py3dpaxxel.sampling_tasks.series_argument_generator import RunArgsGenerator
 from py3dpaxxel.storage.file_filter import FileSelector, File
-from py3dpaxxel.storage.filename_meta import FilenameMeta, FileContent
+from py3dpaxxel.storage.filename_meta import FilenameMetaStream, FilenameMetaFft, FilenameMeta
 
 from octoprint_accelerometer.data_post_process import DataPostProcessRunner
 from octoprint_accelerometer.event_types import DataProcessingEventType, RecordingEventType
@@ -148,33 +148,55 @@ class OctoprintAccelerometerPlugin(octoprint.plugin.StartupPlugin,
     @octoprint.plugin.BlueprintPlugin.route("/get_stream_files_listing", methods=["GET"])
     def on_api_get_stream_files_listing(self):
         fs = FileSelector(os.path.join(self.get_plugin_data_folder(), f"{self.OUTPUT_STREAM_FILE_NAME_PREFIX}-.*\\.tsv$"))
-        files_details = [{"file_name": f.filename_ext} | vars(FilenameMeta().from_filename(f.filename_ext, file_content=FileContent.STREAM)) for f in fs.filter()]
+        files_details = [{"file_name": f.filename_ext} | vars(FilenameMetaStream().from_filename(f.filename_ext)) for f in fs.filter()]
         return flask.jsonify({f"stream_files": files_details})
 
     @octoprint.plugin.BlueprintPlugin.route("/get_fft_files_listing", methods=["GET"])
     def on_api_get_fft_files_listing(self):
         fs = FileSelector(os.path.join(self.get_plugin_data_folder(), f"{self.OUTPUT_FFT_FILE_NAME_PREFIX}-.*\\.tsv$"))
-        files_details = [{"file_name": f.filename_ext} | vars(FilenameMeta().from_filename(f.filename_ext, file_content=FileContent.FFT)) for f in fs.filter()]
+        files_details = [{"file_name": f.filename_ext} | vars(FilenameMetaFft().from_filename(f.filename_ext)) for f in fs.filter()]
         return flask.jsonify({f"fft_files": files_details})
 
-    @octoprint.plugin.BlueprintPlugin.route("/get_runs_listing", methods=["GET"])
-    def on_api_get_runs_listing(self):
-        stream_fs = FileSelector(os.path.join(self.get_plugin_data_folder(), f"{self.OUTPUT_STREAM_FILE_NAME_PREFIX}-.*\\.tsv$"))
-        fft_fs = FileSelector(os.path.join(self.get_plugin_data_folder(), f"{self.OUTPUT_FFT_FILE_NAME_PREFIX}-.*\\.tsv$"))
+    @octoprint.plugin.BlueprintPlugin.route("/get_data_listing", methods=["GET"])
+    def on_api_get_data_listing(self):
+        fs_stream = FileSelector(os.path.join(self.get_plugin_data_folder(), f"{self.OUTPUT_STREAM_FILE_NAME_PREFIX}-.*\\.tsv$"))
+        fs_fft = FileSelector(os.path.join(self.get_plugin_data_folder(), f"{self.OUTPUT_FFT_FILE_NAME_PREFIX}-.*\\.tsv$"))
 
-        stream_files_meta_data: List[Tuple[File, FilenameMeta]] = [(f, FilenameMeta().from_filename(f.filename_ext)) for f in stream_fs.filter()]
-        fft_files_meta_data: List[Tuple[File, FilenameMeta]] = [(f, FilenameMeta().from_filename(f.filename_ext, file_content=FileContent.FFT)) for f in fft_fs.filter()]
+        files_meta_data_stream: List[Tuple[File, FilenameMetaStream]] = [(f, FilenameMetaStream().from_filename(f.filename_ext)) for f in fs_stream.filter()]
+        files_meta_data_fft: List[Tuple[File, FilenameMetaFft]] = [(f, FilenameMetaFft().from_filename(f.filename_ext)) for f in fs_fft.filter()]
 
-        runs: Set[str] = set([m.prefix_2 for (_f, m) in stream_files_meta_data])
-        runs_details: Dict[str, List[Dict[str, Any]]] = {run: [] for run in runs}
+        runs: Set[str] = set([m.prefix_2 for (_f, m) in files_meta_data_stream])
+        data_sets: Dict[str, Dict[str, Union[str, Dict[str, Any]]]] = {run_hash: {} for run_hash in runs}
 
-        for _f, meta in stream_files_meta_data:
-            runs_details[meta.prefix_2].append(vars(meta))
+        def strip_off_unimportant_fields(f: File):
+            for u in ["filename_ext", "full_path"]:
+                f.__delattr__(u)
 
-        for _f, meta in fft_files_meta_data:
-            runs_details[meta.prefix_2].append(vars(meta))
+        def remap_fields_(m: FilenameMeta):
+            for old_name, new_name in {"prefix_1": "prefix",
+                                       "prefix_2": "run_hash",
+                                       "prefix_3": "stream_hash"}.items():
+                m.__dict__[new_name] = m.__dict__.pop(old_name)
 
-        return flask.jsonify({f"runs": runs_details})
+        # append all streams
+        for file_meta, filename_meta in files_meta_data_stream:
+            run_hash: str = filename_meta.prefix_2
+            stream_hash: str = filename_meta.prefix_3
+            strip_off_unimportant_fields(file_meta)
+            remap_fields_(filename_meta)
+            stream_data: Dict[str, Any] = vars(file_meta) | vars(filename_meta) | {"fft": {}}
+            data_sets[run_hash][stream_hash] = stream_data
+
+        # append all FFT's to their respective stream
+        for file_meta, filename_meta in files_meta_data_fft:
+            run_hash = filename_meta.prefix_2
+            stream_hash = filename_meta.prefix_3
+            strip_off_unimportant_fields(file_meta)
+            remap_fields_(filename_meta)
+            fft_details = vars(file_meta) | vars(filename_meta)
+            data_sets[run_hash][stream_hash]["fft"][file_meta.filename_no_ext] = fft_details
+
+        return flask.jsonify({f"data_sets": data_sets})
 
     def route_hook(self, _server_routes, *_args, **_kwargs):
         return [
@@ -364,7 +386,7 @@ class OctoprintAccelerometerPlugin(octoprint.plugin.StartupPlugin,
             zeta_stop_em2=self.stop_zeta_em2,
             zeta_step_em2=self.step_zeta_em2,
             axis=axs,
-            out_file_prefix="", out_file_prefix_2="").generate())
+            out_file_prefix_1="", out_file_prefix_2="").generate())
 
         duration_s = (sequences_count * self.recording_timespan_s +
                       (sequences_count - 1) * self.sequence_separation_s +
