@@ -1,14 +1,9 @@
-/*
- * View model for Octoprint Accelerometer
- *
- * Author: Raoul Rubien
- * License: Apache-2.0
- */
+"use strict";
 $(function() {
 
     // -------------------------------------------------- GET/POST API
 
-    PLUGIN_NAME = "octoprint_accelerometer";
+    const PLUGIN_NAME = "octoprint_accelerometer";
     function requestGet(request, optional = "") {
         return OctoPrint.get(OctoPrint.getBlueprintUrl(PLUGIN_NAME) + "/" + request + optional);
     };
@@ -33,11 +28,11 @@ $(function() {
     // -------------------------------------------------- helper
 
     function secondsToReadableString(seconds) {
-        minutes = Math.floor(seconds / 60);
-        seconds = Number(seconds - (minutes  * 60)).toFixed(1);
-        if (minutes >  0) { minutes = minutes + "m "; } else { minutes = ""; }
-        if (seconds >  0) { seconds = seconds + "s"; } else { seconds = ""; }
-        return minutes + seconds;
+        let minutes_fraction = Math.floor(seconds / 60);
+        let seconds_fraction = Number(seconds - (minutes_fraction  * 60)).toFixed(1);
+        if (minutes_fraction >  0) { minutes_fraction = minutes_fraction + "m "; } else { minutes_fraction = ""; }
+        if (seconds_fraction >  0) { seconds_fraction = seconds_fraction + "s"; } else { seconds_fraction = ""; }
+        return minutes_fraction + seconds_fraction;
     };
 
     function effectiveSteps(start, stop, increment) {
@@ -47,7 +42,7 @@ $(function() {
     // -------------------------------------------------- tab view model
 
     function AccelerometerTabViewModel(parameters) {
-        let self = this;
+        const self = this;
 
         self.login_state = parameters[0];
         self.access = parameters[1];
@@ -106,11 +101,11 @@ $(function() {
 		self.ui_last_data_processing_processed_files_count = ko.observable();
 		self.ui_last_data_processing_skipped_files_count = ko.observable();
 
-        self.onStartupComplete = function () {
+        self.onStartupComplete = () => {
             self.plugin_settings = self.settings.settings.plugins.octoprint_accelerometer;
 
             // on settings changed: subscribe UI observables on their respective settings observable
-            let settings_observables = [
+            const settings_observables = [
                 // observable, observable name (as in plugin; without ui_ prefix), observer
                 [self.plugin_settings.do_sample_x, "do_sample_x", self.ui_do_sample_x],
                 [self.plugin_settings.do_sample_y, "do_sample_y", self.ui_do_sample_y],
@@ -143,21 +138,21 @@ $(function() {
                 [self.plugin_settings.do_dry_run, "do_dry_run", self.ui_do_dry_run],
             ];
 
-            for (let index = 0; index < settings_observables.length; ++index) {
-                let observable = settings_observables[index][0];
-                let observable_name = settings_observables[index][1];
-                let observer = settings_observables[index][2];
+            for (const item of settings_observables) {
+                const observable = item[0];
+                const observable_name = item[1];
+                const observer = item[2];
                 observable.subscribe(
-                    function (new_value){
+                    (new_value) => {
                         observer(new_value);
                         self.updatePluginValuesFromUi([observable_name]);
                         self.requestPluginEstimation();
-
-                });
+                    }
+                );
             }
 
             // on UI parameter changed: subscribe on UI observable changes and send the respective parameter update to the plugin
-            let observables = [
+            const observables = [
                 // observable, observable name (as in plugin, without ui_ prefix)
                 [self.ui_do_sample_x, "do_sample_x"],
                 [self.ui_do_sample_y, "do_sample_y"],
@@ -190,17 +185,18 @@ $(function() {
                 [self.ui_do_dry_run, "do_dry_run"],
             ];
 
-            for (let index = 0; index < observables.length; ++index) {
-                let observable = observables[index][0];
-                let observable_name = observables[index][1]
-                observable.subscribe(function () {
-                    self.updatePluginValuesFromUi([observable_name]);
-                    self.requestPluginEstimation();
-                });
+            for (const item of observables) {
+                const observable = item[0];
+                const observable_name = item[1]
+                observable.subscribe(() => {
+                        self.updatePluginValuesFromUi([observable_name]);
+                        self.requestPluginEstimation();
+                    }
+                );
             }
 
             // initially fetch data from plugin
-            let getPluginData = function () {
+            const getPluginData = () => {
                 if (!self.login_state.hasPermission(self.access.permissions.CONNECTION)) { return; }
                 self.requestPluginEstimation();
                 self.requestAllParameters();
@@ -209,7 +205,7 @@ $(function() {
             getPluginData();
         };
 
-        self.startRecording = function () {
+        self.startRecording = () => {
             if (self.printer_state.isOperational() &&
                !self.printer_state.isPrinting() &&
                !self.printer_state.isCancelling() &&
@@ -220,7 +216,7 @@ $(function() {
             }
         };
 
-        self.abortRecording = function () {
+        self.abortRecording = () => {
             if (self.login_state.hasPermission(self.access.permissions.CONNECTION))
             {
                 pluginDoAbortRecording();
@@ -229,62 +225,58 @@ $(function() {
 
         // -------------------------------------------------- plugin API
 
-        self.updatePluginValuesFromUi = function (values_list = []) {
-            let all_values =
-                {"do_sample_x": function () { return self.ui_do_sample_x(); },
-                 "do_sample_y": function () { return self.ui_do_sample_y(); },
-                 "do_sample_z": function () { return self.ui_do_sample_z(); },
-                 "step_count": function () { return self.ui_step_count(); },
-                 "sequence_count": function () { return self.ui_sequence_count(); },
-                 "distance_x_mm": function () { return self.ui_distance_x_mm(); },
-                 "distance_y_mm": function () { return self.ui_distance_y_mm(); },
-                 "distance_z_mm": function () { return self.ui_distance_z_mm(); },
-                 "speed_x_mm_s": function () { return self.ui_speed_x_mm_s(); },
-                 "speed_y_mm_s": function () { return self.ui_speed_y_mm_s(); },
-                 "speed_z_mm_s": function () { return self.ui_speed_z_mm_s(); },
-                 "acceleration_x_mm_ss": function () { return self.ui_acceleration_x_mm_ss(); },
-                 "acceleration_y_mm_ss": function () { return self.ui_acceleration_y_mm_ss(); },
-                 "acceleration_z_mm_ss": function () { return self.ui_acceleration_z_mm_ss(); },
-                 "start_frequency_hz": function () { return self.ui_start_frequency_hz(); },
-                 "stop_frequency_hz": function () { return self.ui_stop_frequency_hz(); },
-                 "step_frequency_hz": function () { return self.ui_step_frequency_hz(); },
-                 "start_zeta_em2": function () { return self.ui_start_zeta_em2(); },
-                 "stop_zeta_em2": function () { return self.ui_stop_zeta_em2(); },
-                 "step_zeta_em2": function () { return self.ui_step_zeta_em2(); },
-                 "recording_timespan_s": function () { return self.ui_recording_timespan_s(); },
-                 "sequence_separation_s": function () { return self.ui_sequence_separation_s(); },
-                 "step_separation_s": function () { return self.ui_step_separation_s(); },
-                 "sensor_output_data_rate_hz": function () { return self.ui_sensor_output_data_rate_hz(); },
-                 "auto_home": function () { return self.ui_auto_home(); },
-                 "go_start": function () { return self.ui_go_start(); },
-                 "return_start": function () { return self.ui_return_start(); },
-                 "data_remove_before_run": function () { return self.ui_data_remove_before_run(); },
-                 "do_dry_run": function () { return self.ui_do_dry_run(); },
-                 };
+        self.updatePluginValuesFromUi = (values_list = []) => {
+            const all_values = {
+                "do_sample_x": () => self.ui_do_sample_x(),
+                "do_sample_y": () => self.ui_do_sample_y(),
+                "do_sample_z": () => self.ui_do_sample_z(),
+                "step_count": () => self.ui_step_count(),
+                "sequence_count": () => self.ui_sequence_count(),
+                "distance_x_mm": () => self.ui_distance_x_mm(),
+                "distance_y_mm": () => self.ui_distance_y_mm(),
+                "distance_z_mm": () => self.ui_distance_z_mm(),
+                "speed_x_mm_s": () => self.ui_speed_x_mm_s(),
+                "speed_y_mm_s": () => self.ui_speed_y_mm_s(),
+                "speed_z_mm_s": () => self.ui_speed_z_mm_s(),
+                "acceleration_x_mm_ss": () => self.ui_acceleration_x_mm_ss(),
+                "acceleration_y_mm_ss": () => self.ui_acceleration_y_mm_ss(),
+                "acceleration_z_mm_ss": () => self.ui_acceleration_z_mm_ss(),
+                "start_frequency_hz": () => self.ui_start_frequency_hz(),
+                "stop_frequency_hz": () => self.ui_stop_frequency_hz(),
+                "step_frequency_hz": () => self.ui_step_frequency_hz(),
+                "start_zeta_em2": () => self.ui_start_zeta_em2(),
+                "stop_zeta_em2": () => self.ui_stop_zeta_em2(),
+                "step_zeta_em2": () => self.ui_step_zeta_em2(),
+                "recording_timespan_s": () => self.ui_recording_timespan_s(),
+                "sequence_separation_s": () => self.ui_sequence_separation_s(),
+                "step_separation_s": () => self.ui_step_separation_s(),
+                "sensor_output_data_rate_hz": () => self.ui_sensor_output_data_rate_hz(),
+                "auto_home": () => self.ui_auto_home(),
+                "go_start": () => self.ui_go_start(),
+                "return_start": () => self.ui_return_start(),
+                "data_remove_before_run": () => self.ui_data_remove_before_run(),
+                "do_dry_run": () => self.ui_do_dry_run(),
+            };
 
-            if (values_list.length == 0) { pluginDoSetValues(all_values); }
+            if (values_list.length === 0) { pluginDoSetValues(all_values); }
             else {
-                let values_dict = {};
-                for (let index = 0; index < values_list.length; ++index) {
-                    let value = values_list[index];
-                    values_dict[value] = all_values[value]();
-                }
+                const values_dict = {};
+                for (const var_name of values_list) { values_dict[var_name] = all_values[var_name](); }
                 pluginDoSetValues(values_dict);
             }
         };
 
-        self.requestPluginEstimation = function () { pluginGetEstimate().done(self.updateUiFromGetResponse); };
+        self.requestPluginEstimation   = () => pluginGetEstimate().done(self.updateUiFromGetResponse);
+        self.requestAllParameters      = () => pluginGetAllParameters().done(self.updateUiFromGetResponse);
+        self.requestStreamFilesListing = () => pluginGetStreamFilesListing().done(self.updateUiStreamFilesFromGetResponse);
 
-        self.requestAllParameters = function () { pluginGetAllParameters().done(self.updateUiFromGetResponse); };
-        self.requestStreamFilesListing = function () { pluginGetStreamFilesListing().done(self.updateUiStreamFilesFromGetResponse); };
-
-        self.updateUiStreamFilesFromGetResponse = function (response) {
+        self.updateUiStreamFilesFromGetResponse = (response) => {
             if (Object.hasOwn(response, "stream_files")) {
                 self.ui_stream_files_list(response.stream_files);
             }
         };
 
-        self.updateUiFromGetResponse = function (response) {
+        self.updateUiFromGetResponse = (response) => {
             self.ui_frequency_hz_step_total_count(
                 effectiveSteps(self.ui_start_frequency_hz(), self.ui_stop_frequency_hz(), self.ui_step_frequency_hz()));
             self.ui_zeta_em2_step_total_count(
@@ -295,36 +287,36 @@ $(function() {
             }
 
             if (Object.hasOwn(response, "parameters")) {
-                let do_sample_x = response.parameters.do_sample_x;
-                let do_sample_y = response.parameters.do_sample_y;
-                let do_sample_z = response.parameters.do_sample_z;
-                let step_count = response.parameters.step_count;
-                let sequence_count = response.parameters.sequence_count;
-                let distance_x_mm = response.parameters.distance_x_mm;
-                let distance_y_mm = response.parameters.distance_y_mm;
-                let distance_z_mm = response.parameters.distance_z_mm;
-                let speed_x_mm_s = response.parameters.speed_x_mm_s;
-                let speed_y_mm_s = response.parameters.speed_y_mm_s;
-                let speed_z_mm_s = response.parameters.speed_z_mm_s;
-                let acceleration_x_mm_ss = response.parameters.acceleration_x_mm_ss;
-                let acceleration_y_mm_ss = response.parameters.acceleration_y_mm_ss;
-                let acceleration_z_mm_ss = response.parameters.acceleration_z_mm_ss;
-                let start_frequency_hz = response.parameters.start_frequency_hz;
-                let stop_frequency_hz = response.parameters.stop_frequency_hz;
-                let step_frequency_hz = response.parameters.step_frequency_hz;
-                let start_zeta_em2 = response.parameters.start_zeta_em2;
-                let stop_zeta_em2 = response.parameters.stop_zeta_em2;
-                let step_zeta_em2 = response.parameters.step_zeta_em2;
-                let recording_timespan_s = response.parameters.recording_timespan_s;
-                let sequence_separation_s = response.parameters.sequence_separation_s;
-                let step_separation_s = response.parameters.step_separation_s;
-                let devices_seen = response.parameters.devices_seen;
-                let device = response.parameters.device;
-                let auto_home = response.parameters.auto_home;
-                let go_start = response.parameters.go_start;
-                let return_start = response.parameters.return_start;
-                let data_remove_before_run = response.parameters.data_remove_before_run;
-                let do_dry_run = response.parameters.do_dry_run;
+                const do_sample_x = response.parameters.do_sample_x;
+                const do_sample_y = response.parameters.do_sample_y;
+                const do_sample_z = response.parameters.do_sample_z;
+                const step_count = response.parameters.step_count;
+                const sequence_count = response.parameters.sequence_count;
+                const distance_x_mm = response.parameters.distance_x_mm;
+                const distance_y_mm = response.parameters.distance_y_mm;
+                const distance_z_mm = response.parameters.distance_z_mm;
+                const speed_x_mm_s = response.parameters.speed_x_mm_s;
+                const speed_y_mm_s = response.parameters.speed_y_mm_s;
+                const speed_z_mm_s = response.parameters.speed_z_mm_s;
+                const acceleration_x_mm_ss = response.parameters.acceleration_x_mm_ss;
+                const acceleration_y_mm_ss = response.parameters.acceleration_y_mm_ss;
+                const acceleration_z_mm_ss = response.parameters.acceleration_z_mm_ss;
+                const start_frequency_hz = response.parameters.start_frequency_hz;
+                const stop_frequency_hz = response.parameters.stop_frequency_hz;
+                const step_frequency_hz = response.parameters.step_frequency_hz;
+                const start_zeta_em2 = response.parameters.start_zeta_em2;
+                const stop_zeta_em2 = response.parameters.stop_zeta_em2;
+                const step_zeta_em2 = response.parameters.step_zeta_em2;
+                const recording_timespan_s = response.parameters.recording_timespan_s;
+                const sequence_separation_s = response.parameters.sequence_separation_s;
+                const step_separation_s = response.parameters.step_separation_s;
+                const devices_seen = response.parameters.devices_seen;
+                const device = response.parameters.device;
+                const auto_home = response.parameters.auto_home;
+                const go_start = response.parameters.go_start;
+                const return_start = response.parameters.return_start;
+                const data_remove_before_run = response.parameters.data_remove_before_run;
+                const do_dry_run = response.parameters.do_dry_run;
 
                 if (do_sample_x) { self.ui_do_sample_x(do_sample_x); }
                 if (do_sample_y) { self.ui_do_sample_y(do_sample_y); }
@@ -359,13 +351,13 @@ $(function() {
             }
         };
 
-        self.onDataUpdaterPluginMessage = function (plugin, data) {
+        self.onDataUpdaterPluginMessage = (plugin, data) => {
             console.log(plugin);
             console.log(data);
 
             if (plugin !== PLUGIN_NAME) { return; }
 			if ("RecordingEventType" in data) {
-			    let recording_event = data["RecordingEventType"];
+			    const recording_event = data["RecordingEventType"];
 			    self.ui_recording_state(recording_event);
 			    if (["PROCESSING_FINISHED", "UNHANDLED_EXCEPTION", "ABORTED"].includes(recording_event)) {
 			        pluginDoStartDataProcessing();
@@ -386,7 +378,7 @@ $(function() {
     // -------------------------------------------------- settings view model
 
     function AccelerometerSettingsViewModel(parameters) {
-        let self = this;
+        const self = this;
 
         self.settings_view_model = parameters[0];
 
@@ -394,16 +386,16 @@ $(function() {
         self.ui_zeta_em2_step_total_count = ko.observable();
         self.ui_estimated_recording_duration_text = ko.observable();
 
-        self.requestPluginEstimation = function () { pluginGetEstimate().done(self.updateUiFromGetResponse); };
+        self.requestPluginEstimation = () =>pluginGetEstimate().done(self.updateUiFromGetResponse);
 
-        self.updateUiFromGetResponse = function (response) {
+        self.updateUiFromGetResponse = (response) => {
             if (Object.hasOwn(response, "estimate")) {
                 self.ui_estimated_recording_duration_text(secondsToReadableString(response.estimate));
             }
         };
 
-        self.onStartupComplete = function () {
-            let updateFrequencySteps = function () {
+        self.onStartupComplete = () => {
+            const updateFrequencySteps = () => {
                 self.ui_frequency_hz_step_total_count(
                     effectiveSteps(
                     self.settings_view_model.settings.plugins.octoprint_accelerometer.start_frequency_hz(),
@@ -411,7 +403,7 @@ $(function() {
                     self.settings_view_model.settings.plugins.octoprint_accelerometer.step_frequency_hz()));
             };
 
-            let updateZetaSteps = function () {
+            const updateZetaSteps = () => {
                 self.ui_zeta_em2_step_total_count(
                     effectiveSteps(
                         self.settings_view_model.settings.plugins.octoprint_accelerometer.start_zeta_em2(),
@@ -419,18 +411,12 @@ $(function() {
                         self.settings_view_model.settings.plugins.octoprint_accelerometer.step_zeta_em2()));
             };
 
-            self.settings_view_model.settings.plugins.octoprint_accelerometer.start_frequency_hz.subscribe(
-                function() { updateFrequencySteps(); self.requestPluginEstimation(); });
-            self.settings_view_model.settings.plugins.octoprint_accelerometer.stop_frequency_hz.subscribe(
-                function() { updateFrequencySteps(); self.requestPluginEstimation(); });
-            self.settings_view_model.settings.plugins.octoprint_accelerometer.step_frequency_hz.subscribe(
-                function() { updateFrequencySteps(); self.requestPluginEstimation(); });
-            self.settings_view_model.settings.plugins.octoprint_accelerometer.start_zeta_em2.subscribe(
-                function() { updateZetaSteps(); self.requestPluginEstimation(); });
-            self.settings_view_model.settings.plugins.octoprint_accelerometer.stop_zeta_em2.subscribe(
-                function() { updateZetaSteps(); self.requestPluginEstimation(); });
-            self.settings_view_model.settings.plugins.octoprint_accelerometer.step_zeta_em2.subscribe(
-                function() { updateZetaSteps(); self.requestPluginEstimation(); });
+            self.settings_view_model.settings.plugins.octoprint_accelerometer.start_frequency_hz.subscribe(() => { updateFrequencySteps(); self.requestPluginEstimation(); });
+            self.settings_view_model.settings.plugins.octoprint_accelerometer.stop_frequency_hz.subscribe(() => { updateFrequencySteps(); self.requestPluginEstimation(); });
+            self.settings_view_model.settings.plugins.octoprint_accelerometer.step_frequency_hz.subscribe(() => { updateFrequencySteps(); self.requestPluginEstimation(); });
+            self.settings_view_model.settings.plugins.octoprint_accelerometer.start_zeta_em2.subscribe(() => { updateZetaSteps(); self.requestPluginEstimation(); });
+            self.settings_view_model.settings.plugins.octoprint_accelerometer.stop_zeta_em2.subscribe(() => { updateZetaSteps(); self.requestPluginEstimation(); });
+            self.settings_view_model.settings.plugins.octoprint_accelerometer.step_zeta_em2.subscribe(() => { updateZetaSteps(); self.requestPluginEstimation(); });
 
             self.settings_view_model.settings.plugins.octoprint_accelerometer.do_sample_x.subscribe(self.requestPluginEstimation);
             self.settings_view_model.settings.plugins.octoprint_accelerometer.do_sample_y.subscribe(self.requestPluginEstimation);
