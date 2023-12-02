@@ -11,34 +11,31 @@ class OctoAxxelDataSetVis {
         const rawData = await response.json();
         const rootNode = rawData["data_sets"]
 
-        // flatten data from structured to hierarchy: https://d3js.org/d3-hierarchy/hierarchy#hierarchy
+        // flatten data from structured to hierarchy (dict of "name", "children"): https://d3js.org/d3-hierarchy/hierarchy#hierarchy
+        // also append node attributes to "data" of each hierarchy node
         const runs = [];
         for (const runId in rootNode) {
             const runNode = rootNode[runId];
-
-
             const sequences = [];
             for (const sequenceId in runNode) {
                 const sequenceNode = runNode[sequenceId];
-
                 const streams = [];
                 for (const streamId in sequenceNode) {
                     const streamNode = sequenceNode[streamId];
                     const ffts = [];
                     for (const fftsId in streamNode["fft"]) {
-                        const fileName = streamNode["fft"][fftsId]["filename_no_ext"];
-                        ffts.push({name: fileName});
+                        const fftNode = streamNode["fft"][fftsId];
+                        const fftNodeText = "ax: " + fftNode["fft_axis"] + " f: " + fftNode["sequence_frequency_hz"] + "Hz zeta: " + fftNode["sequence_zeta_em2"] * 0.01;
+                        ffts.push({name: fftNodeText, data: streamNode["fft"][fftsId] });
                     }
-                    streams.push({name: streamId, children: ffts});
+                    const streamNodeText = "ax: " + streamNode["sequence_axis"] + " f: " + streamNode["sequence_frequency_hz"] + "Hz zeta: " + streamNode["sequence_zeta_em2"] * 0.01;
+                    streams.push({name: streamNodeText, children: ffts, data: {"stream": streamNode}});
                 }
-                sequences.push({name: sequenceId, children: streams});
-
+                sequences.push({name: sequenceId, children: streams, data: {"series": "-"}});
             }
-            runs.push({name: runId, children: sequences});
-
-
+            runs.push({name: runId, children: sequences, data: {"run": "-"}});
         }
-        const data = {name: "/", children: runs}
+        const data = {name: "/", children: runs, data: {"root": "-"}};
         return data;
     }
 
@@ -47,7 +44,7 @@ class OctoAxxelDataSetVis {
         const nodeSize = 17;
         const root = d3.hierarchy(data).eachBefore((i => d => d.index = i++)(0));
         const nodes = root.descendants();
-        const width = 928;
+        const width = 220;
         const height = (nodes.length + 1) * nodeSize;
 
         const constColumns = [
@@ -63,7 +60,7 @@ class OctoAxxelDataSetVis {
                 label: "Count",
                 value: d => d.children ? 0 : 1,
                 format: (value, d) => d.children ? format(value) : "-",
-                x: 400
+                x: "20em"
             }
         ];
 
@@ -99,10 +96,20 @@ class OctoAxxelDataSetVis {
         node.append("text")
             .attr("dy", "0.32em")
             .attr("x", d => d.depth * nodeSize + 6)
-            .text(d => d.data.name);
+            .text(d => d.data.name)
+            .on("pointerenter", event => event.target.setAttribute("style", "font-weight:bold;cursor: pointer;"))
+            .on("pointerleave", event => event.target.setAttribute("style", "font-weight:normal;cursor: pointer;"))
+            .on("click", event => console.log(event.target));
 
         node.append("title")
-            .text(d => d.ancestors().reverse().map(d => d.data.name).join("/"));
+            .text(d => {
+                const path = d.ancestors().reverse().map(d => d.data.name);
+                let text = (path.length >= 2) ? "run: " + path[1] : "";
+                text += (path.length >= 3) ? " sequence: " + path[2] : "";
+                text += (path.length >= 4) ? " stream: " + path[3] : "";
+                text += (path.length >= 5) ? " fft: " + path[4] : "";
+                return text;
+                });
 
         for (const {label, value, format, x} of computedColumns) {
             svg.append("text")
@@ -118,8 +125,7 @@ class OctoAxxelDataSetVis {
                 .attr("x", x)
                 .attr("text-anchor", "end")
                 .attr("fill", d => d.children ? null : "#555")
-            .data(root.copy().sum(value).descendants())
-                .text(d => format(d.value, d));
+                .text(d => d.children ? d.children.length : "-");
         }
 
         for (const {label, value, format, x} of constColumns) {
@@ -135,7 +141,7 @@ class OctoAxxelDataSetVis {
         return svg.node();
     }
 
-    async plot(dataSetUrl, divNodeId) {
+    async plot(divNodeId, dataSetUrl = "plugin/octoprint_accelerometer/get_data_listing", ) {
         const data = await this.fetchData(dataSetUrl);
         const chart = await this.computeChart(data);
         document.querySelector(divNodeId).append(chart);
@@ -216,9 +222,6 @@ class OctoAxxelAccelerationVis {
                 .attr("fill", "currentColor")
                 .attr("text-anchor", "start")
                 .text("↑ acc [mg]"));
-
-
-        // data.forEach((d) => console.log(d));
 
         // draw the lines
         const line = d3.line()

@@ -211,7 +211,11 @@
 
     <div class="control-group">
         <h4>Data Visualisation</h4>
-        <div id="tab_plugin_octoprint_data_set_vis" style="width: 1600px; height: 400px; overflow-y: scroll"></div>
+        <div id="tab_plugin_octoprint_data_set_vis" style="width: 220px; height: 200px; overflow-y: scroll"></div>
+        <script type="module">
+            (async () => new OctoAxxelDataSetVis().plot("#tab_plugin_octoprint_data_set_vis"))();
+        </script>
+
         <div id="tab_plugin_octoprint_acceleration_vis"></div>
         <script type="module">
             const fileUrl = "plugin/octoprint_accelerometer/download/axxel-30f9c95c-20231127-235625233-s000-ax-f010-z015.tsv";
@@ -229,17 +233,19 @@
                                          ui_data_processing_state() === 'ABORTED' ? '&#9888; Task aborted' :
                                          ''"></span>
         <br/>
+        <!--
         <ul class="muted" data-bind="foreach: ui_stream_files_list">
             <li class="divider">
-                <!-- <a href="javascript:void(0)"
-                   data-bind="text: $data.file_name,
-                              click: ((id, data) => {(async () => new OctoAxxelAccelerationVis().plot('plugin/octoprint_accelerometer/download/' + data.file_name, id))(); return false;}).bind($data, '#tab_plugin_octoprint_acceleration_vis')"
-                >bar</a> -->
                 <a href="javascript:void(0)"
                    data-bind="text: $data.file_name,
-                              click: ((id, data) => {(async () => new OctoAxxelDataSetVis().plot('plugin/octoprint_accelerometer/get_data_listing', id))(); return false;}).bind($data, '#tab_plugin_octoprint_data_set_vis')"
+                              click: ((id, data) => {(async () => new OctoAxxelAccelerationVis().plot('plugin/octoprint_accelerometer/download/' + data.file_name, id))(); return false;}).bind($data, '#tab_plugin_octoprint_acceleration_vis')"
+                >bar</a>
+                <a href="javascript:void(0)"
+                   data-bind="text: $data.file_name,
+                              click: ((id, data) => {(async () => new OctoAxxelDataSetVis().plot(id))(); return false;}).bind($data, '#tab_plugin_octoprint_data_set_vis')"
                 >bar</a>
             </li>
         </ul>
+        -->
     </div>
 </form>
