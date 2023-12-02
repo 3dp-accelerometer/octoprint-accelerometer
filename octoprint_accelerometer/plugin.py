@@ -166,7 +166,7 @@ class OctoprintAccelerometerPlugin(octoprint.plugin.StartupPlugin,
         files_meta_data_fft: List[Tuple[File, FilenameMetaFft]] = [(f, FilenameMetaFft().from_filename(f.filename_ext)) for f in fs_fft.filter()]
 
         runs: Set[str] = set([m.prefix_2 for (_f, m) in files_meta_data_stream])
-        data_sets: Dict[str, Dict[str, Union[str, Dict[str, Any]]]] = {run_hash: {} for run_hash in runs}
+        data_sets: Dict[str, Dict[int, Union[Dict[str, Any], str]]] = {run_hash: {} for run_hash in runs}
 
         def strip_off_unimportant_fields(f: File):
             for u in ["filename_ext", "full_path"]:
@@ -180,21 +180,21 @@ class OctoprintAccelerometerPlugin(octoprint.plugin.StartupPlugin,
 
         # append all streams
         for file_meta, filename_meta in files_meta_data_stream:
-            run_hash: str = filename_meta.prefix_2
-            stream_hash: str = filename_meta.prefix_3
+            run_hash, sequence_nr, stream_hash = filename_meta.prefix_2, filename_meta.sequence_nr, filename_meta.prefix_3
             strip_off_unimportant_fields(file_meta)
             remap_fields_(filename_meta)
             stream_data: Dict[str, Any] = vars(file_meta) | vars(filename_meta) | {"fft": {}}
-            data_sets[run_hash][stream_hash] = stream_data
+            if sequence_nr not in data_sets[run_hash].keys():
+                data_sets[run_hash][sequence_nr] = {}
+            data_sets[run_hash][sequence_nr][stream_hash] = stream_data
 
         # append all FFT's to their respective stream
         for file_meta, filename_meta in files_meta_data_fft:
-            run_hash = filename_meta.prefix_2
-            stream_hash = filename_meta.prefix_3
+            run_hash, sequence_nr, stream_hash = filename_meta.prefix_2, filename_meta.sequence_nr, filename_meta.prefix_3
             strip_off_unimportant_fields(file_meta)
             remap_fields_(filename_meta)
             fft_details = vars(file_meta) | vars(filename_meta)
-            data_sets[run_hash][stream_hash]["fft"][file_meta.filename_no_ext] = fft_details
+            data_sets[run_hash][sequence_nr][stream_hash]["fft"][file_meta.filename_no_ext] = fft_details
 
         return flask.jsonify({f"data_sets": data_sets})
 
