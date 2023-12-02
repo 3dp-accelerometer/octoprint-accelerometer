@@ -6,8 +6,10 @@ const DIV_ID_DATA_SET_VIS = "tab_plugin_octoprint_data_set_vis";
 const DIV_ID_ACCELERATION_VIS = "tab_plugin_octoprint_acceleration_vis";
 const DIV_ID_FFT_VIS = "tab_plugin_octoprint_fft_vis";
 
+/**
+ * blueprint: https://observablehq.com/@d3/indented-tree?intent=fork
+ */
 class OctoAxxelDataSetVis {
-    // blueprint: https://observablehq.com/@d3/indented-tree?intent=fork
 
     /**
      * @param {str} dataSetUrl - URL for GET request, i.e. "plugin/octoprint_accelerometer/get_data_listing"
@@ -171,11 +173,14 @@ class OctoAxxelDataSetVis {
     }
 }
 
+/**
+ * blueprints:
+ * - mouse events - https://observablehq.com/@d3/multi-line-chart/2?intent=fork
+ * - simple line chart - https://observablehq.com/@d3/line-chart/2?intent=fork
+ * - zoom - https://observablehq.com/@d3/zoomable-bar-chart?intent=fork
+ */
 class OctoAxxelAccelerationVis {
-    // blueprints:
-    //  - mouse events: https://observablehq.com/@d3/multi-line-chart/2?intent=fork
-    //  - simple line chart: https://observablehq.com/@d3/line-chart/2?intent=fork
-    //  - zoom: https://observablehq.com/@d3/zoomable-bar-chart?intent=fork
+
 
     /**
      * @param {str} fileUrl - URL of tabular separated file, i.e. "plugin/octoprint_accelerometer/download/axxel-30f9c95c-20231127-235625233-s000-ax-f010-z015.tsv"

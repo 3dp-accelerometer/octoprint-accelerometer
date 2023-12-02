@@ -1,7 +1,9 @@
 "use strict";
 $(function() {
 
-    // -------------------------------------------------- GET/POST API
+    /**
+     * GET/POST API
+     */
 
     const PLUGIN_NAME = "octoprint_accelerometer";
     function requestGet(request, optional = "") {
@@ -25,7 +27,9 @@ $(function() {
     function pluginDoSetValues(values_dict) { return requestPost("set_values", values_dict); };
     function pluginDoStartDataProcessing(values_dict) { return requestPost("start_data_processing", {}); };
 
-    // -------------------------------------------------- helper
+    /**
+     * helper
+     */
 
     function secondsToReadableString(seconds) {
         let minutes_fraction = Math.floor(seconds / 60);
@@ -39,7 +43,9 @@ $(function() {
         return Math.floor((stop - start) / increment);
     };
 
-    // -------------------------------------------------- tab view model
+    /**
+     * tab view model
+     */
 
     function AccelerometerTabViewModel(parameters) {
         const self = this;
@@ -223,7 +229,9 @@ $(function() {
             }
         };
 
-        // -------------------------------------------------- plugin API
+        /**
+         * plugin API
+         */
 
         self.updatePluginValuesFromUi = (values_list = []) => {
             const all_values = {
@@ -375,7 +383,9 @@ $(function() {
 
     };
 
-    // -------------------------------------------------- settings view model
+    /**
+     * settings view model
+     */
 
     function AccelerometerSettingsViewModel(parameters) {
         const self = this;
@@ -433,7 +443,9 @@ $(function() {
         };
     };
 
-    // -------------------------------------------------- register view models
+    /**
+     * register view models
+     */
 
     OCTOPRINT_VIEWMODELS.push({
         construct: AccelerometerTabViewModel,
