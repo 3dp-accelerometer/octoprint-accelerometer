@@ -1,5 +1,11 @@
 "use strict";
 
+const FILE_DOWNLOAD_URL = "plugin/octoprint_accelerometer/download";
+const DATA_SET_URL = "plugin/octoprint_accelerometer/get_data_listing";
+const DIV_ID_DATA_SET_VIS = "tab_plugin_octoprint_data_set_vis";
+const DIV_ID_ACCELERATION_VIS = "tab_plugin_octoprint_acceleration_vis";
+const DIV_ID_FFT_VIS = "tab_plugin_octoprint_fft_vis";
+
 class OctoAxxelDataSetVis {
 
     /**
@@ -26,7 +32,7 @@ class OctoAxxelDataSetVis {
                     for (const fftsId in streamNode["fft"]) {
                         const fftNode = streamNode["fft"][fftsId];
                         const fftNodeText = "ax: " + fftNode["fft_axis"] + " f: " + fftNode["sequence_frequency_hz"] + "Hz zeta: " + fftNode["sequence_zeta_em2"] * 0.01;
-                        ffts.push({name: fftNodeText, data: streamNode["fft"][fftsId] });
+                        ffts.push({name: fftNodeText, data: {"fft": fftNode}});
                     }
                     const streamNodeText = "ax: " + streamNode["sequence_axis"] + " f: " + streamNode["sequence_frequency_hz"] + "Hz zeta: " + streamNode["sequence_zeta_em2"] * 0.01;
                     streams.push({name: streamNodeText, children: ffts, data: {"stream": streamNode}});
@@ -96,10 +102,19 @@ class OctoAxxelDataSetVis {
         node.append("text")
             .attr("dy", "0.32em")
             .attr("x", d => d.depth * nodeSize + 6)
+            .attr("filename", d => {
+                if ("stream" in d.data.data) return d.data.data.stream.filename_no_ext + "."+ d.data.data.stream.file_extension;
+                if ("fft" in d.data.data) return d.data.data.fft.filename_no_ext + "."+ d.data.data.fft.file_extension;
+                return undefined;
+                })
             .text(d => d.data.name)
             .on("pointerenter", event => event.target.setAttribute("style", "font-weight:bold;cursor: pointer;"))
             .on("pointerleave", event => event.target.setAttribute("style", "font-weight:normal;cursor: pointer;"))
-            .on("click", event => console.log(event.target));
+            .on("click", event => {
+                const fileName = event.target.getAttribute("filename");
+                console.log(fileName);
+                (async () => new OctoAxxelAccelerationVis().plot(fileName))();
+            });
 
         node.append("title")
             .text(d => {
@@ -141,10 +156,10 @@ class OctoAxxelDataSetVis {
         return svg.node();
     }
 
-    async plot(divNodeId, dataSetUrl = "plugin/octoprint_accelerometer/get_data_listing", ) {
-        const data = await this.fetchData(dataSetUrl);
+    async plot() {
+        const data = await this.fetchData(DATA_SET_URL);
         const chart = await this.computeChart(data);
-        document.querySelector(divNodeId).append(chart);
+        document.querySelector("#" + DIV_ID_DATA_SET_VIS).replaceChildren(chart);
     }
 }
 
@@ -237,9 +252,9 @@ class OctoAxxelAccelerationVis {
         return svg.node();
     }
 
-    async plot(fileUrl, divNodeId) {
-        const data = await this.fetchData(fileUrl);
+    async plot(fileName) {
+        const data = await this.fetchData(FILE_DOWNLOAD_URL + "/" + fileName);
         const chart = await this.computeChart(data);
-        document.querySelector(divNodeId).append(chart);
+        document.querySelector("#" + DIV_ID_ACCELERATION_VIS).replaceChildren(chart);
     }
 }
