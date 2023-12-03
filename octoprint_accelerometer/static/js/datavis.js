@@ -41,7 +41,7 @@ class OctoAxxelDataSetVis {
                     const ffts = [];
                     for (const fftId in streamNode["fft"]) {
                         const fftNode = streamNode["fft"][fftId];
-                        const fftNodeText = fftNode["fft_axis"].toUpperCase() + " f=" + fftNode["sequence_frequency_hz"] + "Hz zeta=" + fftNode["sequence_zeta_em2"] * 0.01;
+                        const fftNodeText = fftNode["fft_axis"].toUpperCase() + " 𝑓=" + fftNode["sequence_frequency_hz"] + "Hz zeta=" + fftNode["sequence_zeta_em2"] * 0.01;
                         ffts.push({name: fftNodeText, data: {"fft": fftNode}});
                     }
                     const streamNodeMeta = streamNode["meta"];
@@ -73,16 +73,15 @@ class OctoAxxelDataSetVis {
         const root = d3.hierarchy(data).eachBefore((i => d => d.index = i++)(0));
         const nodes = root.descendants();
         const width = 220;
-        const headerHeight = "0em";
         const height = (nodes.length + 1) * nodeSize;
+        const headerHeight = "0em";
 
         const constColumns = [
-            { label: "/", x: "1em" },
-            { label: "Run", x: "4em" },
-            { label: "Seq.", x: "6.5em" },
-            { label: "Stream", x: "10.5em" },
-            { label: "FFT", x: "13em" },
-            { label: "Count", x: "21em" },
+            { label: "/ Run  /  Sequence  /  Stream", anchor: "start", x: "1em" },
+            //{ label: "Run", anchor: "end", x: "5em" },
+            //{ label: "Seq.", anchor: "end", x: "7.2em" },
+            //{ label: "Stream", anchor: "end", x: "10.7em" },
+            { label: "Count", anchor: "end", x: "17.75em" },
         ];
 
         const computedColumns = [
@@ -96,7 +95,7 @@ class OctoAxxelDataSetVis {
         const svg = d3.create("svg")
             .attr("width", width)
             .attr("height", height)
-            .attr("viewBox", [-nodeSize / 2, -nodeSize * 3 / 2, width, height])
+            .attr("viewBox", [-nodeSize / 2, -nodeSize, width, height])
             .attr("style", "max-width: 100%; height: auto; font: 10px sans-serif; overflow: visible;");
 
         const headerSvg = d3.create("svg")
@@ -175,14 +174,6 @@ class OctoAxxelDataSetVis {
                 });
 
         for (const {value, format, x} of computedColumns) {
-            /*svg.append("text")
-                .attr("dy", "0.32em")
-                .attr("y", -nodeSize)
-                .attr("x", x)
-                .attr("text-anchor", "end")
-                .attr("font-weight", "bold")
-                .text(label);*/
-
             node.append("text")
                 .attr("dy", "0.32em")
                 .attr("x", x)
@@ -191,12 +182,12 @@ class OctoAxxelDataSetVis {
                 .text(d => d.children ? d.children.length : "-");
         }
 
-        for (const {label, x} of constColumns) {
+        for (const {label, anchor, x} of constColumns) {
             headerSvg.append("text")
                 .attr("dy", "0.32em")
-                .attr("y", -nodeSize)
+                .attr("y", 0)
                 .attr("x", x)
-                .attr("text-anchor", "end")
+                .attr("text-anchor", anchor)
                 .attr("font-weight", "bold")
                 .text(label);
         }
@@ -639,8 +630,8 @@ class OctoAxxelFftVis {
 
             dot.attr("transform", `translate(${x},${y})`);
             dot.select("#text_l1").text("axis: " + axis.toUpperCase());
-            dot.select("#text_l2").text("time: " + Math.round(xScale.invert(x)) + "ms");
-            dot.select("#text_l3").text("acc: " + Math.round(yScale.invert(y)) + "mg");
+            dot.select("#text_l2").text("𝑓: " + Math.round(xScale.invert(x)) + "Hz");
+            dot.select("#text_l3").text("FFT: " + Math.round(yScale.invert(y)));
             svg.property("value", points[i]).dispatch("input", {bubbles: true});
         }
 
