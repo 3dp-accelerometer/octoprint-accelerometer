@@ -211,13 +211,6 @@
 
     <div class="control-group">
         <h4>Data Visualisation</h4>
-        <div id="tab_plugin_octoprint_data_set_vis" style="height: 200px; overflow-y: scroll">data set vis</div>
-        <div id="tab_plugin_octoprint_acceleration_vis" style=""></div>
-        <div id="tab_plugin_octoprint_fft_vis" style=""></div>
-        <script type="module">
-            (async () => new OctoAxxelDataSetVis().plot())();
-        </script>
-
         <span class="muted" data-bind="text: ui_data_processing_state() === 'STARTING' ? 'Start processing...' :
                                          ui_data_processing_state() === 'PROCESSING' ? 'Processing...' :
                                          ui_data_processing_state() === 'PROCESSING_FINISHED' ? 'Data decomposition finished in ' + ui_last_data_processing_duration_str() + '. ' +
@@ -229,5 +222,11 @@
                                          ui_data_processing_state() === 'ABORTED' ? '&#9888; Task aborted' :
                                          ''"></span>
         <br/>
+        <div id="tab_plugin_octoprint_data_set_vis" style="height: 200px; overflow-y: scroll">data set vis</div>
+        <br/>
+        <div id="tab_plugin_octoprint_acceleration_vis" style=""></div>
+        <br/>
+        <div id="tab_plugin_octoprint_fft_vis" style=""></div>
+
     </div>
 </form>
