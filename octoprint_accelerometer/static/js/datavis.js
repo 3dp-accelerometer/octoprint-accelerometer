@@ -294,8 +294,18 @@ class OctoAxxelAccelerationVis {
             .attr("viewBox", [0, 0, width, height])
             .attr("style", "max-width: 100%; height: auto; overflow: visible; font: 10px sans-serif;");
 
+        // clip path to stop lines and x-axis spilling over
+        svg.append("defs").append("clipPath")
+          .attr("id", "clip0815")
+          .append("rect")
+          .attr("x", marginLeft - 15)
+          .attr("width", width - marginLeft - marginRight + 30)
+          .attr("height", height);
+
         // time axis
         svg.append("g")
+            .attr("class", "x-axis")
+            .attr("clip-path", "url(#clip0815)")
             .attr("transform", `translate(0,${height - marginBottom})`)
             .call(xAxis)
             .call(g => g.select(".domain").remove())
@@ -330,18 +340,21 @@ class OctoAxxelAccelerationVis {
             .attr("fill", "none")
             .attr("stroke", "Tomato")
             .attr("stroke-width", 0.75)
+            .attr("clip-path", "url(#clip0815)")
             .attr("d", xLine(data));
 
         const pathY = svg.append("path")
             .attr("fill", "none")
             .attr("stroke", "MediumSeaGreen")
             .attr("stroke-width", 0.75)
+            .attr("clip-path", "url(#clip0815)")
             .attr("d", yLine(data));
 
         const pathZ = svg.append("path")
             .attr("fill", "none")
             .attr("stroke", "SteelBlue")
             .attr("stroke-width", 0.75)
+            .attr("clip-path", "url(#clip0815)")
             .attr("d", zLine(data));
 
         // invisible layer for the interactive tip
@@ -378,11 +391,11 @@ class OctoAxxelAccelerationVis {
             svg.dispatch("input", {bubbles: true});
         }
 
-        const points = data.map(d => [xScale(d.timestamp_ms), yScale(d.x), "x"])
-            .concat(data.map(d => [xScale(d.timestamp_ms), yScale(d.y), "y"]))
-            .concat(data.map(d => [xScale(d.timestamp_ms), yScale(d.z), "z"]));
-
         const pointermoved = (event) => {
+            const points = data.map(d => [xScale(d.timestamp_ms), yScale(d.x), "x"])
+                .concat(data.map(d => [xScale(d.timestamp_ms), yScale(d.y), "y"]))
+                .concat(data.map(d => [xScale(d.timestamp_ms), yScale(d.z), "z"]));
+
             const [xm, ym] = d3.pointer(event);
             const i = d3.leastIndex(points, ([x, y]) => Math.hypot(x - xm, y - ym));
             const [x, y, axis] = points[i];
@@ -402,6 +415,34 @@ class OctoAxxelAccelerationVis {
             .on("pointerenter", pointerentered)
             .on("pointerleave", pointerleft)
             .on("pointermove", pointermoved);
+
+        const zoom = (svg) => {
+            const extent = [[marginLeft, marginTop], [width - marginRight, height - marginTop]];
+            const zoomed = (event) => {
+                // update scale
+                xScale.range([marginLeft, width - marginRight].map(d => event.transform.applyX(d)));
+
+                // zooms x-axis
+                svg.selectAll(".x-axis").call(xAxis);
+
+                // zooms lines
+                pathX.attr("d", xLine(data));
+                pathY.attr("d", yLine(data));
+                pathZ.attr("d", zLine(data));
+
+                // update pointer
+                pointermoved(event);
+            };
+
+            // zoom behaviour
+            svg.call(d3.zoom()
+                .scaleExtent([1, 32])
+                .translateExtent(extent)
+                .extent(extent)
+                .on("zoom", zoomed));
+        };
+
+        svg.call(zoom);
 
         return svg.node();
     }
@@ -487,8 +528,18 @@ class OctoAxxelFftVis {
             .attr("viewBox", [0, 0, width, height])
             .attr("style", "max-width: 100%; height: auto; overflow: visible; font: 10px sans-serif;");
 
+        // clip path to stop lines and x-axis spilling over
+        svg.append("defs").append("clipPath")
+            .attr("id", "clip1317")
+            .append("rect")
+            .attr("x", marginLeft - 15)
+            .attr("width", width - marginLeft - marginRight + 30)
+            .attr("height", height);
+
         // frequency axis
         svg.append("g")
+            .attr("class", "x-axis")
+            .attr("clip-path", "url(#clip1317)")
             .attr("transform", `translate(0,${height - marginBottom})`)
             .call(xAxis)
             .call(g => g.select(".domain").remove())
@@ -523,18 +574,21 @@ class OctoAxxelFftVis {
             .attr("fill", "none")
             .attr("stroke", "Tomato")
             .attr("stroke-width", 0.75)
+            .attr("clip-path", "url(#clip1317)")
             .attr("d", xLine(data));
 
         const pathY = svg.append("path")
             .attr("fill", "none")
             .attr("stroke", "MediumSeaGreen")
             .attr("stroke-width", 0.75)
+            .attr("clip-path", "url(#clip1317)")
             .attr("d", yLine(data));
 
         const pathZ = svg.append("path")
             .attr("fill", "none")
             .attr("stroke", "SteelBlue")
             .attr("stroke-width", 0.75)
+            .attr("clip-path", "url(#clip1317)")
             .attr("d", zLine(data));
 
         // invisible layer for the interactive tip
@@ -571,11 +625,10 @@ class OctoAxxelFftVis {
             svg.dispatch("input", {bubbles: true});
         }
 
-        const points = data.map(d => [xScale(d.frequency_hz), yScale(d.fft_x), "x"])
-            .concat(data.map(d => [xScale(d.frequency_hz), yScale(d.fft_y), "y"]))
-            .concat(data.map(d => [xScale(d.frequency_hz), yScale(d.fft_z), "z"]));
-
         const pointermoved = (event) => {
+            const points = data.map(d => [xScale(d.frequency_hz), yScale(d.fft_x), "x"])
+                .concat(data.map(d => [xScale(d.frequency_hz), yScale(d.fft_y), "y"]))
+                .concat(data.map(d => [xScale(d.frequency_hz), yScale(d.fft_z), "z"]));
             const [xm, ym] = d3.pointer(event);
             const i = d3.leastIndex(points, ([x, y]) => Math.hypot(x - xm, y - ym));
             const [x, y, axis] = points[i];
@@ -595,6 +648,34 @@ class OctoAxxelFftVis {
             .on("pointerenter", pointerentered)
             .on("pointerleave", pointerleft)
             .on("pointermove", pointermoved);
+
+        const zoom = (svg) => {
+            const extent = [[marginLeft, marginTop], [width - marginRight, height - marginTop]];
+            const zoomed = (event) => {
+                // update scale
+                xScale.range([marginLeft, width - marginRight].map(d => event.transform.applyX(d)));
+
+                // zooms x-axis
+                svg.selectAll(".x-axis").call(xAxis);
+
+                // zooms lines
+                pathX.attr("d", xLine(data));
+                pathY.attr("d", yLine(data));
+                pathZ.attr("d", zLine(data));
+
+                // update pointer
+                pointermoved(event);
+            };
+
+            // zoom behaviour
+            svg.call(d3.zoom()
+                .scaleExtent([1, 32])
+                .translateExtent(extent)
+                .extent(extent)
+                .on("zoom", zoomed));
+        };
+
+        svg.call(zoom);
 
         return svg.node();
     }
