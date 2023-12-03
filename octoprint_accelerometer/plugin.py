@@ -1,5 +1,5 @@
 import os
-from typing import Any, Dict, List, Literal, Optional, Tuple, Set, Union
+from typing import Any, Dict, List, Literal, Optional, Tuple
 
 import flask
 import octoprint.plugin
@@ -9,11 +9,13 @@ from py3dpaxxel.cli.args import convert_axis_from_str
 from py3dpaxxel.controller.api import Py3dpAxxel
 from py3dpaxxel.sampling_tasks.series_argument_generator import RunArgsGenerator
 from py3dpaxxel.storage.file_filter import FileSelector, File
-from py3dpaxxel.storage.filename_meta import FilenameMetaStream, FilenameMetaFft, FilenameMeta
+from py3dpaxxel.storage.filename import timestamp_from_args
+from py3dpaxxel.storage.filename_meta import FilenameMetaStream, FilenameMetaFft
 
 from octoprint_accelerometer.data_post_process import DataPostProcessRunner
 from octoprint_accelerometer.event_types import DataProcessingEventType, RecordingEventType
 from octoprint_accelerometer.record_step_series import RecordStepSeriesRunner
+from octoprint_accelerometer.transfer_types import RunMeta, SequenceMeta, StreamMeta, DataSets, FftMeta, Timestamp
 
 
 class Point3D:
@@ -142,59 +144,71 @@ class OctoprintAccelerometerPlugin(octoprint.plugin.StartupPlugin,
     @octoprint.plugin.BlueprintPlugin.route("/get_files_listing", methods=["GET"])
     def on_api_get_files_listing(self):
         fs = FileSelector(os.path.join(self.get_plugin_data_folder(), ".*"))
-        files_details = {f.filename_ext: vars(f) for f in fs.filter()}
+        files_details = fs.filter()
         return flask.jsonify({f"files": files_details})
 
     @octoprint.plugin.BlueprintPlugin.route("/get_stream_files_listing", methods=["GET"])
     def on_api_get_stream_files_listing(self):
         fs = FileSelector(os.path.join(self.get_plugin_data_folder(), f"{self.OUTPUT_STREAM_FILE_NAME_PREFIX}-.*\\.tsv$"))
-        files_details = [{"file_name": f.filename_ext} | vars(FilenameMetaStream().from_filename(f.filename_ext)) for f in fs.filter()]
+        files = fs.filter()
+        files_details = [StreamMeta(f, FilenameMetaStream().from_filename(f.filename_ext)) for f in files]
         return flask.jsonify({f"stream_files": files_details})
 
     @octoprint.plugin.BlueprintPlugin.route("/get_fft_files_listing", methods=["GET"])
     def on_api_get_fft_files_listing(self):
         fs = FileSelector(os.path.join(self.get_plugin_data_folder(), f"{self.OUTPUT_FFT_FILE_NAME_PREFIX}-.*\\.tsv$"))
-        files_details = [{"file_name": f.filename_ext} | vars(FilenameMetaFft().from_filename(f.filename_ext)) for f in fs.filter()]
+        files = fs.filter()
+        files_details = [FftMeta(f, FilenameMetaFft().from_filename(f.filename_ext)) for f in files]
         return flask.jsonify({f"fft_files": files_details})
 
     @octoprint.plugin.BlueprintPlugin.route("/get_data_listing", methods=["GET"])
     def on_api_get_data_listing(self):
         fs_stream = FileSelector(os.path.join(self.get_plugin_data_folder(), f"{self.OUTPUT_STREAM_FILE_NAME_PREFIX}-.*\\.tsv$"))
         fs_fft = FileSelector(os.path.join(self.get_plugin_data_folder(), f"{self.OUTPUT_FFT_FILE_NAME_PREFIX}-.*\\.tsv$"))
-
         files_meta_data_stream: List[Tuple[File, FilenameMetaStream]] = [(f, FilenameMetaStream().from_filename(f.filename_ext)) for f in fs_stream.filter()]
         files_meta_data_fft: List[Tuple[File, FilenameMetaFft]] = [(f, FilenameMetaFft().from_filename(f.filename_ext)) for f in fs_fft.filter()]
-
-        runs: Set[str] = set([m.prefix_2 for (_f, m) in files_meta_data_stream])
-        data_sets: Dict[str, Dict[int, Union[Dict[str, Any], str]]] = {run_hash: {} for run_hash in runs}
-
-        def strip_off_unimportant_fields(f: File):
-            for u in ["filename_ext", "full_path"]:
-                f.__delattr__(u)
-
-        def remap_fields_(m: FilenameMeta):
-            for old_name, new_name in {"prefix_1": "prefix",
-                                       "prefix_2": "run_hash",
-                                       "prefix_3": "stream_hash"}.items():
-                m.__dict__[new_name] = m.__dict__.pop(old_name)
+        data_sets: DataSets = DataSets()
 
         # append all streams
         for file_meta, filename_meta in files_meta_data_stream:
-            run_hash, sequence_nr, stream_hash = filename_meta.prefix_2, filename_meta.sequence_nr, filename_meta.prefix_3
-            strip_off_unimportant_fields(file_meta)
-            remap_fields_(filename_meta)
-            stream_data: Dict[str, Any] = vars(file_meta) | vars(filename_meta) | {"fft": {}}
-            if sequence_nr not in data_sets[run_hash].keys():
-                data_sets[run_hash][sequence_nr] = {}
-            data_sets[run_hash][sequence_nr][stream_hash] = stream_data
+            run_hash, sequence_nr, stream_hash = filename_meta.run_hash, filename_meta.sequence_nr, filename_meta.stream_hash
+            if run_hash not in data_sets.runs.keys():
+                data_sets.runs[run_hash] = RunMeta()
+            if sequence_nr not in data_sets.runs[run_hash].sequences.keys():
+                data_sets.runs[run_hash].sequences[sequence_nr] = SequenceMeta()
+            if stream_hash not in data_sets.runs[run_hash].sequences[sequence_nr].streams.keys():
+                data_sets.runs[run_hash].sequences[sequence_nr].streams[stream_hash] = StreamMeta(file_meta, filename_meta)
 
-        # append all FFT's to their respective stream
+        # append all FFTs to their respective stream
         for file_meta, filename_meta in files_meta_data_fft:
-            run_hash, sequence_nr, stream_hash = filename_meta.prefix_2, filename_meta.sequence_nr, filename_meta.prefix_3
-            strip_off_unimportant_fields(file_meta)
-            remap_fields_(filename_meta)
-            fft_details = vars(file_meta) | vars(filename_meta)
-            data_sets[run_hash][sequence_nr][stream_hash]["fft"][file_meta.filename_no_ext] = fft_details
+            run_hash, sequence_nr, stream_hash = filename_meta.run_hash, filename_meta.sequence_nr, filename_meta.stream_hash
+            if run_hash not in data_sets.runs.keys():
+                self._logger.warning(f"failed to assign orphaned FFT file={file_meta.filename_ext} to run, run_hash={run_hash} unknown")
+                continue
+            if sequence_nr not in data_sets.runs[run_hash].sequences.keys():
+                self._logger.warning(f"failed to assign orphaned FFT file={file_meta.filename_ext} to sequence, sequence_nr={sequence_nr} unknown")
+                continue
+            if stream_hash not in data_sets.runs[run_hash].sequences[sequence_nr].streams.keys():
+                self._logger.warning(f"failed to assign orphaned FFT file={file_meta.filename_ext} to stream, stream_hash={stream_hash} unknown")
+                continue
+            fft_key: str = filename_meta.fft_axis
+            if fft_key not in data_sets.runs[run_hash].sequences[sequence_nr].streams[stream_hash].ffts.keys():
+                data_sets.runs[run_hash].sequences[sequence_nr].streams[stream_hash].ffts[fft_key] = FftMeta(file_meta, filename_meta)
+
+        # store first and last timestamp of run
+        for run in data_sets.runs.values():
+            youngest_ts: str = "00000000-000000000"
+            oldest_ts: str = "99999999-235959999"
+            for sequence in run.sequences.values():
+                for stream in sequence.streams.values():
+                    meta: FilenameMetaStream = stream.meta
+                    ts = timestamp_from_args(meta.year, meta.month, meta.day, meta.hour, meta.minute, meta.second, meta.milli_second)
+                    if ts < oldest_ts:
+                        oldest_ts = ts
+                        run.started = Timestamp(meta.year, meta.month, meta.day, meta.hour, meta.minute, meta.second, meta.milli_second)
+                    if ts > youngest_ts:
+                        youngest_ts = ts
+                        run.stopped = Timestamp(meta.year, meta.month, meta.day, meta.hour, meta.minute, meta.second, meta.milli_second)
 
         return flask.jsonify({f"data_sets": data_sets})
 

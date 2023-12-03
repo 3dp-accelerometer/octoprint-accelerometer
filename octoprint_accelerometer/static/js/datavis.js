@@ -15,41 +15,50 @@ class OctoAxxelDataSetVis {
 
     /**
      * @param {str} dataSetUrl - URL for GET request, i.e. "plugin/octoprint_accelerometer/get_data_listing"
-     * @return {object}
+     * @return {{ name: str, children: [...], data: {...} }}
      */
     async fetchData(dataSetUrl) {
         const response = await fetch(dataSetUrl);
         const rawData = await response.json();
-        const rootNode = rawData["data_sets"]
+        const rootNode = rawData["data_sets"]["runs"]
 
         // flatten data from structured to hierarchy (dict of "name", "children"): https://d3js.org/d3-hierarchy/hierarchy#hierarchy
         // also append node attributes to "data" of each hierarchy node
         const runs = [];
-        for (const runId in rootNode) {
-            const runNode = rootNode[runId];
+        for (const runHash in rootNode) {
+            const runNode = rootNode[runHash];
+            const sequencesNode = runNode["sequences"];
+
             const sequences = [];
-            for (const sequenceId in runNode) {
-                const sequenceNode = runNode[sequenceId];
+            for (const sequenceId in sequencesNode) {
+                const streamsNode = sequencesNode[sequenceId]["streams"];
+
                 const streams = [];
-                for (const streamId in sequenceNode) {
-                    const streamNode = sequenceNode[streamId];
+                for (const streamHash in streamsNode) {
+                    const streamNode = streamsNode[streamHash];
+
                     const ffts = [];
-                    for (const fftsId in streamNode["fft"]) {
-                        const fftNode = streamNode["fft"][fftsId];
-                        const fftNodeText = "ax: " + fftNode["fft_axis"] + " f: " + fftNode["sequence_frequency_hz"] + "Hz zeta: " + fftNode["sequence_zeta_em2"] * 0.01;
+                    for (const fftId in streamNode["fft"]) {
+                        const fftNode = streamNode["fft"][fftId];
+                        const fftNodeText = fftNode["fft_axis"].toUpperCase() + " f=" + fftNode["sequence_frequency_hz"] + "Hz zeta=" + fftNode["sequence_zeta_em2"] * 0.01;
                         ffts.push({name: fftNodeText, data: {"fft": fftNode}});
                     }
-                    const streamNodeText = "ax: " + streamNode["sequence_axis"] + " f: " + streamNode["sequence_frequency_hz"] + "Hz zeta: " + streamNode["sequence_zeta_em2"] * 0.01;
-                    streams.push({name: streamNodeText, children: ffts, data: {"stream": streamNode}});
+                    const streamNodeMeta = streamNode["meta"];
+                    const streamNodeText = streamNodeMeta["sequence_axis"].toUpperCase() + " f=" + streamNodeMeta["sequence_frequency_hz"] + "Hz zeta=" + streamNodeMeta["sequence_zeta_em2"] * 0.01;
+                    // Note: FFT children are not going to be plotted in the tree, so this those go to "data.children" rather than "children".
+                    streams.push({name: streamNodeText, children: [], data: {"stream": streamNode, "children": ffts}});
                 }
                 sequences.push({name: sequenceId, children: streams, data: {"series": "-"}});
             }
-            runs.push({name: runId, children: sequences, data: {"run": "-"}});
+            runs.push({name: runHash, children: sequences, data: {"run": "-"}});
         }
         const data = {name: "/", children: runs, data: {"root": "-"}};
         return data;
     }
 
+    /**
+     * @param {{ name: str, children: [...], data: {...} }}: data - chart data to plot
+     */
     async computeChart(data) {
         const format = d3.format("");
         const nodeSize = 17;
@@ -109,18 +118,15 @@ class OctoAxxelDataSetVis {
             .attr("x", d => d.depth * nodeSize + 6)
             .attr("filename", d => {
                 if ("stream" in d.data.data)
-                return d.data.data.stream.filename_no_ext + "."+ d.data.data.stream.file_extension;
-                if ("fft" in d.data.data) return d.data.data.fft.filename_no_ext + "."+ d.data.data.fft.file_extension;
-                return undefined;}) // d.children[0].data.data.fft.filename_no_ext
+                return d.data.data.stream.file.filename_ext;
+                return undefined;})
             .attr("fft_files", d => {
-                let files = undefined;
-                if ("stream" in d.data.data) {
-                    files = [];
-                    for (const c of d.children) {
-                        files.push(c.data.data.fft.filename_no_ext + "." + c.data.data.fft.file_extension);
-                    }
-                }
-                return files;
+                if ("stream" in d.data.data)
+                    return [
+                        d.data.data.stream.ffts.x.file.filename_ext,
+                        d.data.data.stream.ffts.y.file.filename_ext,
+                        d.data.data.stream.ffts.z.file.filename_ext];
+                return undefined;
             })
             .attr("nodeType", d => {
                 if ("stream" in d.data.data) return "stream";
