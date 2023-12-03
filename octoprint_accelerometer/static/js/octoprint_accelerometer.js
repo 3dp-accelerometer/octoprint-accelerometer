@@ -372,7 +372,11 @@ $(function() {
 			    }
 			}
 			if ("DataProcessingEventType" in data) {
-			    self.ui_data_processing_state(data["DataProcessingEventType"]);
+			    const processing_event=data["DataProcessingEventType"];
+			    self.ui_data_processing_state(processing_event);
+			    if (["PROCESSING_FINISHED"].includes(processing_event)) {
+			        (async () => new OctoAxxelDataSetVis().plot())();
+			    }
 			}
 			if ("LAST_DATA_RECORDING_DURATION_S" in data) { self.ui_last_data_recording_duration_str(secondsToReadableString(data["LAST_DATA_RECORDING_DURATION_S"])) }
 			if ("LAST_DATA_PROCESSING_DURATION_S" in data) { self.ui_last_data_processing_duration_str(secondsToReadableString(data["LAST_DATA_PROCESSING_DURATION_S"])) }

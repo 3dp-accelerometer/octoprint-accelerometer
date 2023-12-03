@@ -271,6 +271,7 @@ class OctoprintAccelerometerPlugin(octoprint.plugin.StartupPlugin,
         self._update_seen_devices()
         self.data_recording_runner = self._construct_new_step_series_runner()
         self.data_processing_runner = self._construct_new_data_processing_runner()
+        self._start_data_processing()
 
     def get_assets(self):
         return {"js": ["js/octoprint_accelerometer.js",

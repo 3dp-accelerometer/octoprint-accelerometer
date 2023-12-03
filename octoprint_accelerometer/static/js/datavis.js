@@ -589,4 +589,5 @@ class OctoAxxelFftVis {
     }
 }
 
+// render data-set tree on load
 (async () => new OctoAxxelDataSetVis().plot())();
