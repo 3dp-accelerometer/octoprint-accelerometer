@@ -101,7 +101,7 @@
                         <input type="number" class="input-mini text-right" min="1" max="100" data-bind="value: ui_step_frequency_hz">
                     </div>
                     <div class="span4">
-                        <span class="help-inline">{{_('Input Shaping frequency')}}</span><a href="https://marlinfw.org/docs/gcode/M593.html" target="_blank" rel="noopener noreferrer">{{_('*')}}</a>
+                        <span class="help-inline">{{_('Input Shaping frequency <code>𝑓</code>')}}</span><a href="https://marlinfw.org/docs/gcode/M593.html" target="_blank" rel="noopener noreferrer">{{_('*')}}</a>
                         <br/>
                         <span class="muted">{{_('Steps: ')}}</span>
                         <span class="muted" data-bind="text: ui_frequency_hz_step_total_count() < 0 ? '&#9888;' : ''"></span>
@@ -137,7 +137,7 @@
                         <input type="number" class="input-mini text-right" min="1" max="100" data-bind="value: ui_step_zeta_em2">
                     </div>
                     <div class="span4">
-                        <span class="help-inline">{{_('Input Shaping Zeta')}}</span><a href="https://marlinfw.org/docs/gcode/M593.html" target="_blank" rel="noopener noreferrer">{{_('*')}}</a>
+                        <span class="help-inline">{{_('Input Shaping Zeta <code>ζ</code>')}}</span><a href="https://marlinfw.org/docs/gcode/M593.html" target="_blank" rel="noopener noreferrer">{{_('*')}}</a>
                         <br/>
                         <span class="muted">{{_('Steps: ')}}</span>
                         <span class="muted" data-bind="text: ui_zeta_em2_step_total_count() < 0 ? '&#9888;' : ''"></span>
@@ -222,11 +222,10 @@
                                          ui_data_processing_state() === 'ABORTED' ? '&#9888; Task aborted' :
                                          ''"></span>
         <br/>
-        <div id="tab_plugin_octoprint_data_set_vis" style="height: 200px; overflow-y: scroll">data set vis</div>
-        <br/>
-        <div id="tab_plugin_octoprint_acceleration_vis" style=""></div>
-        <br/>
-        <div id="tab_plugin_octoprint_fft_vis" style=""></div>
+        <div id="tab_plugin_octoprint_data_set_vis_header"></div>
+        <div id="tab_plugin_octoprint_data_set_vis" style="float: left; height: 200px; overflow-y: scroll"></div>
+        <div id="tab_plugin_octoprint_acceleration_vis"></div>
+        <div id="tab_plugin_octoprint_fft_vis"></div>
 
     </div>
 </form>

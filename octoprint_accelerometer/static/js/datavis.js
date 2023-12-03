@@ -5,6 +5,7 @@
 const FILE_DOWNLOAD_URL = "plugin/octoprint_accelerometer/download";
 const DATA_SET_URL = "plugin/octoprint_accelerometer/get_data_listing";
 const DIV_ID_DATA_SET_VIS = "tab_plugin_octoprint_data_set_vis";
+const DIV_ID_DATA_SET_VIS_HEADER = "tab_plugin_octoprint_data_set_vis_header";
 const DIV_ID_ACCELERATION_VIS = "tab_plugin_octoprint_acceleration_vis";
 const DIV_ID_FFT_VIS = "tab_plugin_octoprint_fft_vis";
 
@@ -44,13 +45,20 @@ class OctoAxxelDataSetVis {
                         ffts.push({name: fftNodeText, data: {"fft": fftNode}});
                     }
                     const streamNodeMeta = streamNode["meta"];
-                    const streamNodeText = streamNodeMeta["sequence_axis"].toUpperCase() + " f=" + streamNodeMeta["sequence_frequency_hz"] + "Hz zeta=" + streamNodeMeta["sequence_zeta_em2"] * 0.01;
+                    const streamNodeText = streamNodeMeta["sequence_axis"].toUpperCase() + "-Axis 𝑓=" + streamNodeMeta["sequence_frequency_hz"] + "Hz ζ=" + streamNodeMeta["sequence_zeta_em2"] * 0.01;
                     // Note: FFT children are not going to be plotted in the tree, so this those go to "data.children" rather than "children".
                     streams.push({name: streamNodeText, children: [], data: {"stream": streamNode, "children": ffts}});
                 }
-                sequences.push({name: sequenceId, children: streams, data: {"series": "-"}});
+                sequences.push({name: "seq=" + sequenceId, children: streams, data: {"series": "-"}});
             }
-            runs.push({name: runHash, children: sequences, data: {"run": "-"}});
+            const ts = "" + runNode.started.year +
+                "." + runNode.started.month.toString().padStart(2,"0") +
+                "." + runNode.started.day.toString().padStart(2,"0") +
+                " " + runNode.started.hour.toString().padStart(2,"0") +
+                ":" + runNode.started.minute.toString().padStart(2,"0") +
+                ":" + runNode.started.second.toString().padStart(2,"0") +
+                "." + runNode.started.milli_second.toString().padStart(3,"0");
+            runs.push({name: ts, children: sequences, data: {"run": "-"}});
         }
         const data = {name: "/", children: runs, data: {"root": "-"}};
         return data;
@@ -65,6 +73,7 @@ class OctoAxxelDataSetVis {
         const root = d3.hierarchy(data).eachBefore((i => d => d.index = i++)(0));
         const nodes = root.descendants();
         const width = 220;
+        const headerHeight = "0em";
         const height = (nodes.length + 1) * nodeSize;
 
         const constColumns = [
@@ -73,11 +82,11 @@ class OctoAxxelDataSetVis {
             { label: "Seq.", x: "6.5em" },
             { label: "Stream", x: "10.5em" },
             { label: "FFT", x: "13em" },
+            { label: "Count", x: "21em" },
         ];
 
         const computedColumns = [
             {
-                label: "Count",
                 value: d => d.children ? 0 : 1,
                 format: (value, d) => d.children ? format(value) : "-",
                 x: "20em"
@@ -88,6 +97,11 @@ class OctoAxxelDataSetVis {
             .attr("width", width)
             .attr("height", height)
             .attr("viewBox", [-nodeSize / 2, -nodeSize * 3 / 2, width, height])
+            .attr("style", "max-width: 100%; height: auto; font: 10px sans-serif; overflow: visible;");
+
+        const headerSvg = d3.create("svg")
+            .attr("width", width)
+            .attr("height", headerHeight)
             .attr("style", "max-width: 100%; height: auto; font: 10px sans-serif; overflow: visible;");
 
         const link = svg.append("g")
@@ -111,7 +125,7 @@ class OctoAxxelDataSetVis {
         node.append("circle")
             .attr("cx", d => d.depth * nodeSize)
             .attr("r", 2.5)
-            .attr("fill", d => d.children ? null : "#999");
+            .attr("fill", d => d.children ? "#999" : null);
 
         node.append("text")
             .attr("dy", "0.32em")
@@ -122,50 +136,52 @@ class OctoAxxelDataSetVis {
                 return undefined;})
             .attr("fft_files", d => {
                 if ("stream" in d.data.data)
-                    return [
-                        d.data.data.stream.ffts.x.file.filename_ext,
-                        d.data.data.stream.ffts.y.file.filename_ext,
-                        d.data.data.stream.ffts.z.file.filename_ext];
+                    return JSON.stringify({
+                        "x": d.data.data.stream.ffts.x.file.filename_ext,
+                        "y": d.data.data.stream.ffts.y.file.filename_ext,
+                        "z": d.data.data.stream.ffts.z.file.filename_ext});
                 return undefined;
             })
             .attr("nodeType", d => {
+                if ("root" in d.data.data) return "root";
+                if ("run" in d.data.data) return "run";
+                if ("series" in d.data.data) return "series";
                 if ("stream" in d.data.data) return "stream";
-                if ("fft" in d.data.data) return "fft";
                 return undefined;})
             .text(d => d.data.name)
-            .on("pointerenter", event => event.target.setAttribute("style", "font-weight:bold;cursor: pointer;"))
-            .on("pointerleave", event => event.target.setAttribute("style", "font-weight:normal;cursor: pointer;"))
+            .on("pointerenter", event => {
+                if (event.target.getAttribute("nodeType") === "stream")
+                    event.target.setAttribute("style", "font-weight:bold;cursor: pointer;");})
+            .on("pointerleave", event => {
+                if (event.target.getAttribute("nodeType") === "stream")
+                    event.target.setAttribute("style", "font-weight:normal;cursor: default;");})
             .on("click", event => {
                 const nodeType = event.target.getAttribute("nodeType");
                 if (nodeType === "stream") {
                     const fileName = event.target.getAttribute("filename");
-                    const fftFiles = event.target.getAttribute("fft_files").split(",");
-                    console.log("plotting acceleration: " + fileName);
+                    const fftFiles = JSON.parse(event.target.getAttribute("fft_files"));
                     (async () => new OctoAxxelAccelerationVis().plot(fileName))();
-                    console.log("plotting fft: " + fftFiles);
                     (async () => new OctoAxxelFftVis().plot(fftFiles))();
                 }
-                else if (nodeType === "fft") { console.log("TODO: plotting FFT"); }
             });
 
         node.append("title")
             .text(d => {
                 const path = d.ancestors().reverse().map(d => d.data.name);
                 let text = (path.length >= 2) ? "run: " + path[1] : "";
-                text += (path.length >= 3) ? " sequence: " + path[2] : "";
-                text += (path.length >= 4) ? " stream: " + path[3] : "";
-                text += (path.length >= 5) ? " fft: " + path[4] : "";
+                text += (path.length >= 3) ? " | " + path[2] : "";
+                text += (path.length >= 4) ? " | " + path[3] : "";
                 return text;
                 });
 
-        for (const {label, value, format, x} of computedColumns) {
-            svg.append("text")
+        for (const {value, format, x} of computedColumns) {
+            /*svg.append("text")
                 .attr("dy", "0.32em")
                 .attr("y", -nodeSize)
                 .attr("x", x)
                 .attr("text-anchor", "end")
                 .attr("font-weight", "bold")
-                .text(label);
+                .text(label);*/
 
             node.append("text")
                 .attr("dy", "0.32em")
@@ -175,8 +191,8 @@ class OctoAxxelDataSetVis {
                 .text(d => d.children ? d.children.length : "-");
         }
 
-        for (const {label, value, format, x} of constColumns) {
-            svg.append("text")
+        for (const {label, x} of constColumns) {
+            headerSvg.append("text")
                 .attr("dy", "0.32em")
                 .attr("y", -nodeSize)
                 .attr("x", x)
@@ -185,12 +201,13 @@ class OctoAxxelDataSetVis {
                 .text(label);
         }
 
-        return svg.node();
+        return [headerSvg.node(), svg.node()]
     }
 
     async plot() {
         const data = await this.fetchData(DATA_SET_URL);
-        const chart = await this.computeChart(data);
+        const [header, chart] = await this.computeChart(data);
+        document.querySelector("#" + DIV_ID_DATA_SET_VIS_HEADER).replaceChildren(header);
         document.querySelector("#" + DIV_ID_DATA_SET_VIS).replaceChildren(chart);
     }
 }
@@ -312,19 +329,19 @@ class OctoAxxelAccelerationVis {
         const pathX = svg.append("path")
             .attr("fill", "none")
             .attr("stroke", "Tomato")
-            .attr("stroke-width", 1.5)
+            .attr("stroke-width", 0.75)
             .attr("d", xLine(data));
 
         const pathY = svg.append("path")
             .attr("fill", "none")
             .attr("stroke", "MediumSeaGreen")
-            .attr("stroke-width", 1.5)
+            .attr("stroke-width", 0.75)
             .attr("d", yLine(data));
 
         const pathZ = svg.append("path")
             .attr("fill", "none")
             .attr("stroke", "SteelBlue")
-            .attr("stroke-width", 1.5)
+            .attr("stroke-width", 0.75)
             .attr("d", zLine(data));
 
         // invisible layer for the interactive tip
@@ -505,19 +522,19 @@ class OctoAxxelFftVis {
         const pathX = svg.append("path")
             .attr("fill", "none")
             .attr("stroke", "Tomato")
-            .attr("stroke-width", 1.5)
+            .attr("stroke-width", 0.75)
             .attr("d", xLine(data));
 
         const pathY = svg.append("path")
             .attr("fill", "none")
             .attr("stroke", "MediumSeaGreen")
-            .attr("stroke-width", 1.5)
+            .attr("stroke-width", 0.75)
             .attr("d", yLine(data));
 
         const pathZ = svg.append("path")
             .attr("fill", "none")
             .attr("stroke", "SteelBlue")
-            .attr("stroke-width", 1.5)
+            .attr("stroke-width", 0.75)
             .attr("d", zLine(data));
 
         // invisible layer for the interactive tip
@@ -584,11 +601,7 @@ class OctoAxxelFftVis {
 
     async plot(fileNames) {
         const fileUrls = {};
-        for (const fileName of fileNames) {
-            // todo: this check smells fishy
-            const axis = (fileName.endsWith("x.tsv")) ? "x" : (fileName.endsWith("y.tsv")) ? "y" : (fileName.endsWith("z.tsv")) ? "z" : "-";
-            fileUrls[axis] = FILE_DOWNLOAD_URL + "/" + fileName;
-        }
+        for (const axis in fileNames) { fileUrls[axis] = FILE_DOWNLOAD_URL + "/" + fileNames[axis]; }
         const data = await this.fetchData(fileUrls);
         const chart = await this.computeChart(data);
         document.querySelector("#" + DIV_ID_FFT_VIS).replaceChildren(chart);
