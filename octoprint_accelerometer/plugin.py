@@ -275,7 +275,6 @@ class OctoprintAccelerometerPlugin(octoprint.plugin.StartupPlugin,
     def get_assets(self):
         return {"js": ["js/octoprint_accelerometer.js",
                        "js/d3.js",
-                       "js/plot.js",
                        "js/datavis.js"]}
 
     def get_update_information(self):
