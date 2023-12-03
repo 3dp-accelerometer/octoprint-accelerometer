@@ -12,7 +12,7 @@ plugin_author_email = "rubienr@sbox.tugraz.at"
 plugin_url = "https://github.com/3dp-accelerometer/octoprint-accelerometer"
 plugin_license = "Apache-2.0"
 plugin_requires = [
-    "py3dpaxxel[data-decomposition] @ git+https://github.com/3dp-accelerometer/py3dpaxxel.git@v0.1.10",
+    "py3dpaxxel[data-decomposition] @ git+https://github.com/3dp-accelerometer/py3dpaxxel.git@v0.1.11",
 ]
 
 # Additional package data to install for this plugin. The sub folders "templates", "static" and "translations" will
