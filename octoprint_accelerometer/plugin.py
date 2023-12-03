@@ -474,11 +474,11 @@ class OctoprintAccelerometerPlugin(octoprint.plugin.StartupPlugin,
                 self._push_data_to_ui({"LAST_DATA_PROCESSING_DURATION_S": f"{last_run_duration_s}"})
 
             total, processed, skipped = self.data_processing_runner.get_last_processed_count()
-            if total:
+            if total is not None:
                 self._push_data_to_ui({"FILES_TOTAL_COUNT": f"{total}"})
-            if processed:
+            if processed is not None:
                 self._push_data_to_ui({"FILES_PROCESSED_COUNT": f"{processed}"})
-            if skipped:
+            if skipped is not None:
                 self._push_data_to_ui({"FILES_SKIPPED_COUNT": f"{skipped}"})
 
     def _start_recording(self):
